@@ -14,7 +14,10 @@ fn forge(string: &str) -> Position {
 
 /// `left` is strictly before `right` both as strings (what a database sorts) and as positions.
 fn assert_before(left: &Position, right: &Position) {
-    assert!(left.to_string() < right.to_string(), "'{left}' must sort before '{right}' as a string");
+    assert!(
+        left.to_string() < right.to_string(),
+        "'{left}' must sort before '{right}' as a string"
+    );
     assert!(left < right, "'{left}' must be less than '{right}'");
     assert!(right > left, "'{right}' must be greater than '{left}'");
 }
@@ -41,7 +44,12 @@ fn forge_round_trips() {
     let system = system();
     let start = system.start().unwrap();
     let next = system.next(&start).unwrap();
-    for position in [start, next, system.previous(&start).unwrap(), system.core(&start, &next).unwrap()] {
+    for position in [
+        start,
+        next,
+        system.previous(&start).unwrap(),
+        system.core(&start, &next).unwrap(),
+    ] {
         let forged = system.forge(&position.to_string()).unwrap();
         assert_eq!(forged.to_string(), position.to_string());
         assert_eq!(forged, position);
@@ -60,7 +68,11 @@ fn forge_rejects_characters_that_are_not_digits() {
         ("aa`a", '`', 2),
         ("aaa0", '0', 3),
     ] {
-        assert_eq!(system.forge(string), Err(PositionError::InvalidCharacter { character, index }), "{string}");
+        assert_eq!(
+            system.forge(string),
+            Err(PositionError::InvalidCharacter { character, index }),
+            "{string}"
+        );
     }
     assert_eq!(system.forge("!azz!a").unwrap().to_string(), "!azz!a");
 }
@@ -97,8 +109,14 @@ fn next_and_previous_are_strictly_monotonic_and_inverse() {
         assert_before(&previous, &position);
         position = previous;
     }
-    assert_eq!(system.previous(&system.next(&start).unwrap()).unwrap(), start);
-    assert_eq!(system.next(&system.previous(&start).unwrap()).unwrap(), start);
+    assert_eq!(
+        system.previous(&system.next(&start).unwrap()).unwrap(),
+        start
+    );
+    assert_eq!(
+        system.next(&system.previous(&start).unwrap()).unwrap(),
+        start
+    );
 }
 
 #[test]
@@ -123,12 +141,24 @@ fn next_and_previous_fail_at_the_edges_of_n() {
     let system = system();
     for string in ["zzzz", "zzzzm"] {
         let position = forge(string);
-        assert_eq!(system.next(&position), Err(PositionError::EdgeReached { position, direction: Direction::Next }));
+        assert_eq!(
+            system.next(&position),
+            Err(PositionError::EdgeReached {
+                position,
+                direction: Direction::Next
+            })
+        );
     }
     for string in ["!!!!", "!!!!a"] {
         let position = forge(string);
         let error = system.previous(&position).unwrap_err();
-        assert_eq!(error, PositionError::EdgeReached { position, direction: Direction::Previous });
+        assert_eq!(
+            error,
+            PositionError::EdgeReached {
+                position,
+                direction: Direction::Previous
+            }
+        );
         assert!(error.is_overflow());
     }
 }
@@ -197,7 +227,10 @@ fn core_ignores_the_order_of_its_arguments() {
     let system = system();
     let start = system.start().unwrap();
     let next = system.next(&system.next(&start).unwrap()).unwrap();
-    assert_eq!(system.core(&start, &next).unwrap().to_string(), system.core(&next, &start).unwrap().to_string());
+    assert_eq!(
+        system.core(&start, &next).unwrap().to_string(),
+        system.core(&next, &start).unwrap().to_string()
+    );
 }
 
 #[test]
@@ -206,11 +239,27 @@ fn threshold_reached_keeps_the_valid_position() {
     // ln + lz = 16, the threshold is ceil(0.85 * 16) = 14
     assert_eq!(system.threshold_length(), 14);
     let error = system.forge("mmmmabcdefghij").unwrap_err();
-    let PositionError::ThresholdReached { position, length, threshold } = error else { panic!("{error}") };
-    assert_eq!((position.to_string().as_str(), length, threshold), ("mmmmabcdefghij", 14, 14));
+    let PositionError::ThresholdReached {
+        position,
+        length,
+        threshold,
+    } = error
+    else {
+        panic!("{error}")
+    };
+    assert_eq!(
+        (position.to_string().as_str(), length, threshold),
+        ("mmmmabcdefghij", 14, 14)
+    );
     assert!(system.is_threshold_reached(&position));
     assert!(!system.has_overflow(&position));
-    assert_eq!(system.forge("mmmmabcdefghijklm"), Err(PositionError::Overflow { length: 17, limit: 16 }));
+    assert_eq!(
+        system.forge("mmmmabcdefghijklm"),
+        Err(PositionError::Overflow {
+            length: 17,
+            limit: 16
+        })
+    );
 }
 
 #[test]
@@ -220,8 +269,14 @@ fn positions_of_other_systems_cannot_be_mixed() {
     let position = digits.start().unwrap();
     assert_eq!(position.to_string(), "4444#");
     assert!(!alphabet.owns(&position));
-    assert_eq!(alphabet.next(&position), Err(PositionError::SystemMismatch { position }));
-    assert_eq!(alphabet.core(&alphabet.start().unwrap(), &position), Err(PositionError::SystemMismatch { position }));
+    assert_eq!(
+        alphabet.next(&position),
+        Err(PositionError::SystemMismatch { position })
+    );
+    assert_eq!(
+        alphabet.core(&alphabet.start().unwrap(), &position),
+        Err(PositionError::SystemMismatch { position })
+    );
     // The same configuration is compatible
     let twin = system();
     assert!(twin.owns(&alphabet.start().unwrap()));
@@ -231,7 +286,10 @@ fn positions_of_other_systems_cannot_be_mixed() {
 fn each_system_prints_its_own_characters() {
     let alphabet = system();
     let digits = Staquia::create('#', '0', '9', 4, 12, 0.15).unwrap();
-    for (system, allowed) in [(alphabet, "!abcdefghijklmnopqrstuvwxyz"), (digits, "#0123456789")] {
+    for (system, allowed) in [
+        (alphabet, "!abcdefghijklmnopqrstuvwxyz"),
+        (digits, "#0123456789"),
+    ] {
         let start = system.start().unwrap();
         let next = system.next(&start).unwrap();
         for position in [start, next, system.core(&start, &next).unwrap()] {
@@ -254,22 +312,53 @@ fn the_default_system_is_the_javascript_one() {
 
 #[test]
 fn create_with_options_changes_only_the_given_fields() {
-    let system = Staquia::create_with_options(Options { ln: 6, ..Options::default() }).unwrap();
+    let system = Staquia::create_with_options(Options {
+        ln: 6,
+        ..Options::default()
+    })
+    .unwrap();
     assert_eq!((system.ln(), system.lz(), system.max_length()), (6, 15, 21));
     assert_eq!(system.start().unwrap().to_string(), "ʰʰʰʰʰʰ!");
 }
 
 #[test]
 fn create_validates_the_configuration() {
-    assert!(matches!(Staquia::create('a', '!', 'z', 5, 15, 0.15), Err(CreateError::Order { .. })));
-    assert!(matches!(Staquia::create('!', 'z', 'a', 5, 15, 0.15), Err(CreateError::Order { .. })));
-    assert!(matches!(Staquia::create('!', 'a', '😀', 5, 15, 0.15), Err(CreateError::Character('😀'))));
-    assert!(matches!(Staquia::create('!', 'a', '\u{E000}', 5, 15, 0.15), Err(CreateError::Character(_))));
-    assert!(matches!(Staquia::create('!', 'a', 'z', 0, 15, 0.15), Err(CreateError::Length { .. })));
-    assert!(matches!(Staquia::create('!', 'a', 'z', 5, 0, 0.15), Err(CreateError::Length { .. })));
-    assert!(matches!(Staquia::create('!', 'a', 'z', 20, MAX_LENGTH - 19, 0.15), Err(CreateError::Length { .. })));
-    assert!(matches!(Staquia::create('!', 'a', 'z', 5, 15, 1.5), Err(CreateError::Threshold(_))));
-    assert!(matches!(Staquia::create('!', 'a', 'z', 5, 15, f64::NAN), Err(CreateError::Threshold(_))));
+    assert!(matches!(
+        Staquia::create('a', '!', 'z', 5, 15, 0.15),
+        Err(CreateError::Order { .. })
+    ));
+    assert!(matches!(
+        Staquia::create('!', 'z', 'a', 5, 15, 0.15),
+        Err(CreateError::Order { .. })
+    ));
+    assert!(matches!(
+        Staquia::create('!', 'a', '😀', 5, 15, 0.15),
+        Err(CreateError::Character('😀'))
+    ));
+    assert!(matches!(
+        Staquia::create('!', 'a', '\u{E000}', 5, 15, 0.15),
+        Err(CreateError::Character(_))
+    ));
+    assert!(matches!(
+        Staquia::create('!', 'a', 'z', 0, 15, 0.15),
+        Err(CreateError::Length { .. })
+    ));
+    assert!(matches!(
+        Staquia::create('!', 'a', 'z', 5, 0, 0.15),
+        Err(CreateError::Length { .. })
+    ));
+    assert!(matches!(
+        Staquia::create('!', 'a', 'z', 20, MAX_LENGTH - 19, 0.15),
+        Err(CreateError::Length { .. })
+    ));
+    assert!(matches!(
+        Staquia::create('!', 'a', 'z', 5, 15, 1.5),
+        Err(CreateError::Threshold(_))
+    ));
+    assert!(matches!(
+        Staquia::create('!', 'a', 'z', 5, 15, f64::NAN),
+        Err(CreateError::Threshold(_))
+    ));
     assert!(Staquia::create('!', 'a', 'z', 20, MAX_LENGTH - 20, 0.15).is_ok());
     assert!(Staquia::create('!', '\u{E000}', '\u{FFFF}', 5, 15, 0.15).is_ok());
 }
@@ -278,9 +367,18 @@ fn create_validates_the_configuration() {
 fn from_digits_is_the_inverse_of_digits() {
     let system = system();
     let position = forge("abcdefg");
-    assert_eq!((position.n(), position.z()), (&[1, 2, 3, 4][..], &[5, 6, 7][..]));
+    assert_eq!(
+        (position.n(), position.z()),
+        (&[1, 2, 3, 4][..], &[5, 6, 7][..])
+    );
     assert_eq!(system.from_digits(position.digits()).unwrap(), position);
-    assert_eq!(system.from_digits(&[1, 30]), Err(PositionError::InvalidCharacter { character: '~', index: 1 }));
+    assert_eq!(
+        system.from_digits(&[1, 30]),
+        Err(PositionError::InvalidCharacter {
+            character: '~',
+            index: 1
+        })
+    );
 }
 
 #[test]
@@ -294,13 +392,23 @@ fn sorting_positions_and_strings_gives_the_same_order() {
     for i in 0..10 {
         let core = system.core(&left, &right).unwrap();
         positions.push(core);
-        if i % 2 == 0 { left = core } else { right = core }
+        if i % 2 == 0 {
+            left = core
+        } else {
+            right = core
+        }
         positions.push(system.previous(&positions[0]).unwrap());
     }
     let mut strings: Vec<String> = positions.iter().map(Position::to_string).collect();
     positions.sort();
     strings.sort();
-    assert_eq!(positions.iter().map(Position::to_string).collect::<Vec<_>>(), strings);
+    assert_eq!(
+        positions
+            .iter()
+            .map(Position::to_string)
+            .collect::<Vec<_>>(),
+        strings
+    );
 }
 
 #[test]

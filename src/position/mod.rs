@@ -1,31 +1,13 @@
-use core::cmp::Ordering;
+//! The positions created by a system.
+
+mod ordering;
+mod signature;
+
+pub(crate) use signature::Signature;
+
 use core::fmt::{self, Write};
-use core::hash::{Hash, Hasher};
 
 use crate::MAX_LENGTH;
-
-/// Identifies the meaning of the digits of a system: its characters and the fixed length of `N`.
-/// Systems with the same signature create compatible positions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct Signature {
-    pub zero: char,
-    pub first: char,
-    pub last: char,
-    pub ln: u8,
-}
-
-impl Signature {
-    /// The character of a digit.
-    #[inline]
-    pub fn character(&self, digit: u16) -> char {
-        if digit == 0 {
-            self.zero
-        } else {
-            // Systems never include the surrogates, so every digit is a valid `char`
-            char::from_u32(self.first as u32 + u32::from(digit) - 1).unwrap_or(char::REPLACEMENT_CHARACTER)
-        }
-    }
-}
 
 /// A position: a short string that keeps the order of a list.
 ///
@@ -66,14 +48,22 @@ pub struct Position {
 impl Position {
     /// Creates a position from its digits, `n` is `N` and `z` is `Z`, both most significant first.
     /// The caller verified that both fit.
-    pub(crate) fn new(signature: Signature, n: impl Iterator<Item = u16>, z: impl Iterator<Item = u16>) -> Self {
+    pub(crate) fn new(
+        signature: Signature,
+        n: impl Iterator<Item = u16>,
+        z: impl Iterator<Item = u16>,
+    ) -> Self {
         let mut digits = [0u16; MAX_LENGTH];
         let mut length = 0usize;
         for digit in n.chain(z) {
             digits[length] = digit;
             length += 1;
         }
-        Self { digits, length: length as u8, signature }
+        Self {
+            digits,
+            length: length as u8,
+            signature,
+        }
     }
 
     pub(crate) fn signature(&self) -> &Signature {
@@ -115,72 +105,9 @@ impl Position {
 
     /// The characters of the position string.
     pub fn chars(&self) -> impl Iterator<Item = char> + '_ {
-        self.digits().iter().map(|digit| self.signature.character(*digit))
-    }
-
-    /// The `N` digits without the leading zeroes and the `Z` digits without the trailing ones:
-    /// two positions are equal when these are.
-    fn significant(&self) -> (&[u16], &[u16]) {
-        let n = self.n();
-        let n = &n[n.iter().position(|d| *d != 0).unwrap_or(n.len())..];
-        let z = self.z();
-        let z = &z[..z.iter().rposition(|d| *d != 0).map_or(0, |i| i + 1)];
-        (n, z)
-    }
-}
-
-impl Ord for Position {
-    /// Compares the positions as numbers, `N` is the integer part and `Z` the fractional part. Positions
-    /// of the same system compare exactly as their strings.
-    fn cmp(&self, other: &Self) -> Ordering {
-        let (left, right) = (self.n(), other.n());
-        // Aligns `N` by its least significant digit, the missing digits are zeroes
-        let width = left.len().max(right.len());
-        let digit = |section: &[u16], i: usize| {
-            let missing = width - section.len();
-            if i < missing { 0 } else { section[i - missing] }
-        };
-        for i in 0..width {
-            match digit(left, i).cmp(&digit(right, i)) {
-                Ordering::Equal => {}
-                ordering => return ordering,
-            }
-        }
-        // Aligns `Z` by its most significant digit, the missing digits are zeroes
-        let (left, right) = (self.z(), other.z());
-        for i in 0..left.len().max(right.len()) {
-            let l = left.get(i).copied().unwrap_or(0);
-            let r = right.get(i).copied().unwrap_or(0);
-            match l.cmp(&r) {
-                Ordering::Equal => {}
-                ordering => return ordering,
-            }
-        }
-        Ordering::Equal
-    }
-}
-
-impl PartialOrd for Position {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for Position {
-    /// Two positions are equal when they have the same value, the zeroes at the end of `Z` don't
-    /// change it (`"mmmmm!"` and `"mmmmm!!"` are equal).
-    fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Ordering::Equal
-    }
-}
-
-impl Eq for Position {}
-
-impl Hash for Position {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let (n, z) = self.significant();
-        n.hash(state);
-        z.hash(state);
+        self.digits()
+            .iter()
+            .map(|digit| self.signature.character(*digit))
     }
 }
 

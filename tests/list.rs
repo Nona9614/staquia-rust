@@ -24,11 +24,19 @@ impl Item for Task {
 }
 
 fn task(id: u32) -> Task {
-    Task { id, title: "", position: String::new() }
+    Task {
+        id,
+        title: "",
+        position: String::new(),
+    }
 }
 
 fn stored(id: u32, position: &str) -> Task {
-    Task { id, title: "", position: position.to_owned() }
+    Task {
+        id,
+        title: "",
+        position: position.to_owned(),
+    }
 }
 
 fn system() -> Staquia {
@@ -59,8 +67,14 @@ fn assert_consistent(list: &LexicalList<Task>) {
             assert!(items[k - 1].position() < item.position());
         }
     }
-    assert_eq!(list.first().map(|item| item.id()), items.first().map(|item| item.id()));
-    assert_eq!(list.last().map(|item| item.id()), items.last().map(|item| item.id()));
+    assert_eq!(
+        list.first().map(|item| item.id()),
+        items.first().map(|item| item.id())
+    );
+    assert_eq!(
+        list.last().map(|item| item.id()),
+        items.last().map(|item| item.id())
+    );
 }
 
 #[test]
@@ -78,7 +92,10 @@ fn push_and_unshift_write_the_positions_into_the_values() {
     list.unshift(task(0)).unwrap();
     let pushed = list.push(stored(3, "ignored")).unwrap();
     assert_eq!(pushed.value().position, "mmmmo!");
-    let positions: Vec<&str> = list.iter().map(|item| item.value().position.as_str()).collect();
+    let positions: Vec<&str> = list
+        .iter()
+        .map(|item| item.value().position.as_str())
+        .collect();
     assert_eq!(positions, ["mmmml!", "mmmmm!", "mmmmn!", "mmmmo!"]);
     assert_eq!(order(&list), [0, 1, 2, 3]);
     assert_consistent(&list);
@@ -87,7 +104,13 @@ fn push_and_unshift_write_the_positions_into_the_values() {
 #[test]
 fn a_rejected_value_is_given_back() {
     let mut list = list(&[1]);
-    let rejected = list.push(Task { id: 1, title: "again", position: String::new() }).unwrap_err();
+    let rejected = list
+        .push(Task {
+            id: 1,
+            title: "again",
+            position: String::new(),
+        })
+        .unwrap_err();
     assert_eq!(rejected.error, LexicalError::DuplicateId(1));
     assert_eq!(rejected.into_value().title, "again");
     let rejected = list.unshift(task(1)).unwrap_err();
@@ -153,16 +176,43 @@ fn delete_gives_the_value_back_and_links_the_neighbors() {
 #[test]
 fn move_validates_its_neighbors() {
     let mut list = list(&[1, 2, 3, 4]);
-    assert_eq!(list.move_to(&9, Some(&1), None).unwrap_err(), LexicalError::NotFound(9));
-    assert_eq!(list.move_to(&1, Some(&9), None).unwrap_err(), LexicalError::NotFound(9));
-    assert_eq!(list.move_to(&1, None, None).unwrap_err(), LexicalError::MissingNeighbors(1));
-    assert_eq!(list.move_to(&1, Some(&1), Some(&2)).unwrap_err(), LexicalError::SelfNeighbor(1));
+    assert_eq!(
+        list.move_to(&9, Some(&1), None).unwrap_err(),
+        LexicalError::NotFound(9)
+    );
+    assert_eq!(
+        list.move_to(&1, Some(&9), None).unwrap_err(),
+        LexicalError::NotFound(9)
+    );
+    assert_eq!(
+        list.move_to(&1, None, None).unwrap_err(),
+        LexicalError::MissingNeighbors(1)
+    );
+    assert_eq!(
+        list.move_to(&1, Some(&1), Some(&2)).unwrap_err(),
+        LexicalError::SelfNeighbor(1)
+    );
     assert_eq!(
         list.move_to(&1, Some(&2), Some(&4)).unwrap_err(),
-        LexicalError::NotAdjacent { previous: Some(2), next: Some(4) }
+        LexicalError::NotAdjacent {
+            previous: Some(2),
+            next: Some(4)
+        }
     );
-    assert_eq!(list.move_to(&1, Some(&2), None).unwrap_err(), LexicalError::NotAdjacent { previous: Some(2), next: None });
-    assert_eq!(list.move_to(&4, None, Some(&2)).unwrap_err(), LexicalError::NotAdjacent { previous: None, next: Some(2) });
+    assert_eq!(
+        list.move_to(&1, Some(&2), None).unwrap_err(),
+        LexicalError::NotAdjacent {
+            previous: Some(2),
+            next: None
+        }
+    );
+    assert_eq!(
+        list.move_to(&4, None, Some(&2)).unwrap_err(),
+        LexicalError::NotAdjacent {
+            previous: None,
+            next: Some(2)
+        }
+    );
     // Nothing changed
     assert_eq!(order(&list), [1, 2, 3, 4]);
     assert_consistent(&list);
@@ -171,7 +221,10 @@ fn move_validates_its_neighbors() {
 #[test]
 fn move_changes_only_the_moved_item() {
     let mut list = list(&[1, 2, 3]);
-    let before: Vec<String> = list.iter().map(|item| item.value().position.clone()).collect();
+    let before: Vec<String> = list
+        .iter()
+        .map(|item| item.value().position.clone())
+        .collect();
     // Adjacent only once 3 leaves its place
     let moved = list.move_to(&3, Some(&1), Some(&2)).unwrap();
     assert_eq!(moved.value().position, "mmmmmn");
@@ -184,7 +237,13 @@ fn move_changes_only_the_moved_item() {
     assert_eq!(order(&list), [2, 3, 1]);
     // To its current place: nothing changes
     let position = list.find(&3).unwrap().value().position.clone();
-    assert_eq!(list.move_to(&3, Some(&2), Some(&1)).unwrap().value().position, position);
+    assert_eq!(
+        list.move_to(&3, Some(&2), Some(&1))
+            .unwrap()
+            .value()
+            .position,
+        position
+    );
     assert_consistent(&list);
 }
 
@@ -199,16 +258,36 @@ fn an_exhausted_gap_fails_without_changes_and_recovers_after_rebalance() {
         }
         assert_consistent(&list);
     };
-    assert!(matches!(error, LexicalError::Position(PositionError::ThresholdReached { .. })), "{error}");
-    let snapshot: Vec<(u32, String)> = list.iter().map(|item| (item.value().id, item.value().position.clone())).collect();
+    assert!(
+        matches!(
+            error,
+            LexicalError::Position(PositionError::ThresholdReached { .. })
+        ),
+        "{error}"
+    );
+    let snapshot: Vec<(u32, String)> = list
+        .iter()
+        .map(|item| (item.value().id, item.value().position.clone()))
+        .collect();
     let ids = order(&list);
     assert!(list.move_to(&ids[2], Some(&ids[0]), Some(&ids[1])).is_err());
-    let unchanged: Vec<(u32, String)> = list.iter().map(|item| (item.value().id, item.value().position.clone())).collect();
+    let unchanged: Vec<(u32, String)> = list
+        .iter()
+        .map(|item| (item.value().id, item.value().position.clone()))
+        .collect();
     assert_eq!(snapshot, unchanged);
     // Rebalancing spaces the positions again, keeping the order
-    let affected: Vec<u32> = list.rebalance().unwrap().iter().map(|item| item.value().id).collect();
+    let affected: Vec<u32> = list
+        .rebalance()
+        .unwrap()
+        .iter()
+        .map(|item| item.value().id)
+        .collect();
     assert!(!affected.is_empty());
-    assert_eq!(order(&list), snapshot.iter().map(|(id, _)| *id).collect::<Vec<_>>());
+    assert_eq!(
+        order(&list),
+        snapshot.iter().map(|(id, _)| *id).collect::<Vec<_>>()
+    );
     assert_eq!(list.first().unwrap().value().position, "mmmmm!");
     list.move_to(&ids[2], Some(&ids[0]), Some(&ids[1])).unwrap();
     assert_consistent(&list);
@@ -222,12 +301,22 @@ fn push_and_unshift_fail_at_the_edges_of_n_and_give_the_value_back() {
     list.push(task(1)).unwrap(); // "b!"
     list.push(task(2)).unwrap(); // "c!"
     let rejected = list.push(task(3)).unwrap_err();
-    assert!(matches!(rejected.error, LexicalError::Position(PositionError::EdgeReached { .. })), "{}", rejected.error);
+    assert!(
+        matches!(
+            rejected.error,
+            LexicalError::Position(PositionError::EdgeReached { .. })
+        ),
+        "{}",
+        rejected.error
+    );
     assert_eq!(rejected.value.id, 3);
     list.unshift(task(4)).unwrap(); // "a!"
     list.unshift(task(5)).unwrap(); // "!!", the zero
     assert!(list.unshift(task(6)).is_err());
-    let positions: Vec<&str> = list.iter().map(|item| item.value().position.as_str()).collect();
+    let positions: Vec<&str> = list
+        .iter()
+        .map(|item| item.value().position.as_str())
+        .collect();
     assert_eq!(positions, ["!!", "a!", "b!", "c!"]);
     assert_consistent(&list);
 }
@@ -235,17 +324,52 @@ fn push_and_unshift_fail_at_the_edges_of_n_and_give_the_value_back() {
 #[test]
 fn set_trusts_ordered_rows_and_rejects_broken_ones_without_changes() {
     let mut list = list(&[7]);
-    let affected = list.set(vec![stored(1, "mmmmm!"), stored(2, "mmmmn!"), stored(3, "n")]).unwrap();
+    let affected = list
+        .set(vec![
+            stored(1, "mmmmm!"),
+            stored(2, "mmmmn!"),
+            stored(3, "n"),
+        ])
+        .unwrap();
     assert!(affected.is_empty());
     assert_eq!(order(&list), [1, 2, 3]);
     for (rows, error) in [
-        (vec![stored(4, "b"), stored(5, "a")], LexicalError::NotOrdered { index: 1, previous: 4, id: 5 }),
-        (vec![stored(4, "a"), stored(5, "a")], LexicalError::NotOrdered { index: 1, previous: 4, id: 5 }),
-        (vec![stored(4, "a"), stored(4, "b")], LexicalError::DuplicateId(4)),
-        (vec![stored(4, "")], LexicalError::InvalidPosition { id: 4, reason: None }),
+        (
+            vec![stored(4, "b"), stored(5, "a")],
+            LexicalError::NotOrdered {
+                index: 1,
+                previous: 4,
+                id: 5,
+            },
+        ),
+        (
+            vec![stored(4, "a"), stored(5, "a")],
+            LexicalError::NotOrdered {
+                index: 1,
+                previous: 4,
+                id: 5,
+            },
+        ),
+        (
+            vec![stored(4, "a"), stored(4, "b")],
+            LexicalError::DuplicateId(4),
+        ),
+        (
+            vec![stored(4, "")],
+            LexicalError::InvalidPosition {
+                id: 4,
+                reason: None,
+            },
+        ),
         (
             vec![stored(4, "A")],
-            LexicalError::InvalidPosition { id: 4, reason: Some(PositionError::InvalidCharacter { character: 'A', index: 0 }) },
+            LexicalError::InvalidPosition {
+                id: 4,
+                reason: Some(PositionError::InvalidCharacter {
+                    character: 'A',
+                    index: 0,
+                }),
+            },
         ),
     ] {
         let rejected = list.set(rows.clone()).unwrap_err();
@@ -259,8 +383,20 @@ fn set_trusts_ordered_rows_and_rejects_broken_ones_without_changes() {
 #[test]
 fn set_untrusted_repairs_and_reports_the_affected_rows() {
     let mut list: LexicalList<Task> = LexicalList::new(system());
-    let rows = vec![stored(1, "c"), stored(2, "a"), stored(3, "a"), stored(4, ""), stored(5, "b"), stored(6, "A")];
-    let mut affected: Vec<u32> = list.set_untrusted(rows).unwrap().iter().map(|item| item.value().id).collect();
+    let rows = vec![
+        stored(1, "c"),
+        stored(2, "a"),
+        stored(3, "a"),
+        stored(4, ""),
+        stored(5, "b"),
+        stored(6, "A"),
+    ];
+    let mut affected: Vec<u32> = list
+        .set_untrusted(rows)
+        .unwrap()
+        .iter()
+        .map(|item| item.value().id)
+        .collect();
     affected.sort_unstable();
     // 2 keeps "a", 3 is repaired after it, 4 and 6 are added at the end
     assert_eq!(order(&list), [2, 3, 5, 1, 4, 6]);
@@ -296,9 +432,15 @@ fn sort_by_fails_without_changes_when_there_is_no_room() {
     list.push(task(1)).unwrap();
     list.unshift(task(2)).unwrap();
     list.unshift(task(3)).unwrap();
-    let before: Vec<(u32, String)> = list.iter().map(|item| (item.value().id, item.value().position.clone())).collect();
+    let before: Vec<(u32, String)> = list
+        .iter()
+        .map(|item| (item.value().id, item.value().position.clone()))
+        .collect();
     assert!(list.rebalance().is_err());
-    let after: Vec<(u32, String)> = list.iter().map(|item| (item.value().id, item.value().position.clone())).collect();
+    let after: Vec<(u32, String)> = list
+        .iter()
+        .map(|item| (item.value().id, item.value().position.clone()))
+        .collect();
     assert_eq!(before, after);
     assert_consistent(&list);
 }
@@ -321,12 +463,16 @@ fn string_ids_work_including_the_empty_string() {
             self.position = position.to_string();
         }
     }
-    let named = |id: &str| Named { id: id.to_owned(), position: String::new() };
+    let named = |id: &str| Named {
+        id: id.to_owned(),
+        position: String::new(),
+    };
     let mut list = LexicalList::new(system());
     list.push(named("")).unwrap();
     list.push(named("b")).unwrap();
     list.push(named("c")).unwrap();
-    list.move_to(&"c".to_owned(), None, Some(&String::new())).unwrap();
+    list.move_to(&"c".to_owned(), None, Some(&String::new()))
+        .unwrap();
     let order: Vec<&str> = list.iter().map(|item| item.id().as_str()).collect();
     assert_eq!(order, ["c", "", "b"]);
     list.delete(&String::new()).unwrap();

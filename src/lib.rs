@@ -32,9 +32,10 @@
 // `Rejected` gives the values back on failure instead of boxing them
 #![allow(clippy::result_large_err)]
 
-mod digits;
+mod algorithms;
 mod error;
 mod list;
+mod number;
 mod position;
 mod staquia;
 

@@ -15,7 +15,8 @@ const SYSTEMS: [(char, char, char, usize, usize, f64); 7] = [
 ];
 
 fn system(index: &str) -> Staquia {
-    let (zero, first, last, ln, lz, threshold) = SYSTEMS[index.parse::<usize>().expect("system index")];
+    let (zero, first, last, ln, lz, threshold) =
+        SYSTEMS[index.parse::<usize>().expect("system index")];
     Staquia::create(zero, first, last, ln, lz, threshold).expect("valid system")
 }
 
@@ -45,7 +46,12 @@ fn report(failures: &[String], total: usize) {
         failures.is_empty(),
         "{} of {total} operations differ from JavaScript:\n{}",
         failures.len(),
-        failures.iter().take(15).cloned().collect::<Vec<_>>().join("\n")
+        failures
+            .iter()
+            .take(15)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n")
     );
 }
 
@@ -56,7 +62,9 @@ fn positions_match_javascript() {
     let mut total = 0;
     for (number, line) in fixture.lines().enumerate() {
         let fields: Vec<&str> = line.split('\t').collect();
-        let [index, operation, a, b, expected] = fields[..] else { panic!("line {}: bad format", number + 1) };
+        let [index, operation, a, b, expected] = fields[..] else {
+            panic!("line {}: bad format", number + 1)
+        };
         let system = system(index);
         let actual = match operation {
             "start" => system.start(),
@@ -65,7 +73,10 @@ fn positions_match_javascript() {
             "previous" => system.previous(&parse(&system, a)),
             "core" => system.core(&parse(&system, a), &parse(&system, b)),
             "from" => {
-                let digits: Vec<u16> = a.split(',').map(|digit| digit.parse().expect("digit")).collect();
+                let digits: Vec<u16> = a
+                    .split(',')
+                    .map(|digit| digit.parse().expect("digit"))
+                    .collect();
                 system.from_digits(&digits)
             }
             "mismatch" => {
@@ -90,7 +101,10 @@ struct Task {
 
 impl Task {
     fn new(id: u32, position: &str) -> Self {
-        Self { id, position: position.to_owned() }
+        Self {
+            id,
+            position: position.to_owned(),
+        }
     }
 }
 
@@ -113,7 +127,9 @@ impl Item for Task {
 /// The JavaScript `LexicalErrorType` of an error.
 fn kind(error: &LexicalError<u32>) -> &'static str {
     match error {
-        LexicalError::Position(_) | LexicalError::InvalidPosition { .. } | LexicalError::MissingNeighbors(_) => "position",
+        LexicalError::Position(_)
+        | LexicalError::InvalidPosition { .. }
+        | LexicalError::MissingNeighbors(_) => "position",
         LexicalError::NotFound(_) => "not-found",
         LexicalError::NotAdjacent { .. } | LexicalError::SelfNeighbor(_) => "not-adjacent",
         LexicalError::DuplicateId(_) => "duplicate-id",
@@ -124,7 +140,10 @@ fn kind(error: &LexicalError<u32>) -> &'static str {
 fn affected<'a>(items: impl IntoIterator<Item = &'a staquia::LexicalItem<Task>>) -> String {
     let mut ids: Vec<u32> = items.into_iter().map(|item| item.value().id).collect();
     ids.sort_unstable();
-    format!("ok:{}", ids.iter().map(u32::to_string).collect::<Vec<_>>().join(","))
+    format!(
+        "ok:{}",
+        ids.iter().map(u32::to_string).collect::<Vec<_>>().join(",")
+    )
 }
 
 fn state(list: &LexicalList<Task>) -> String {
@@ -164,14 +183,24 @@ fn lists_match_javascript() {
     let mut list: Option<LexicalList<Task>> = None;
     for (number, line) in fixture.lines().enumerate() {
         let fields: Vec<&str> = line.split('\t').collect();
-        let [index, scenario, operation, arguments, expected, expected_state] = fields[..] else {
+        let [
+            index,
+            scenario,
+            operation,
+            arguments,
+            expected,
+            expected_state,
+        ] = fields[..]
+        else {
             panic!("line {}: bad format", number + 1)
         };
         if current != (index, scenario) {
             current = (index, scenario);
             list = Some(LexicalList::new(system(index)));
         }
-        let Some(list) = list.as_mut() else { unreachable!() };
+        let Some(list) = list.as_mut() else {
+            unreachable!()
+        };
         let result = match operation {
             "push" => match list.push(Task::new(arguments.parse().expect("id"), "")) {
                 Ok(_) => "ok".to_owned(),
@@ -199,7 +228,11 @@ fn lists_match_javascript() {
             },
             "set" | "set_untrusted" => {
                 let rows = rows(arguments);
-                let result = if operation == "set" { list.set(rows) } else { list.set_untrusted(rows) };
+                let result = if operation == "set" {
+                    list.set(rows)
+                } else {
+                    list.set_untrusted(rows)
+                };
                 match result {
                     Ok(items) => affected(items),
                     Err(rejected) => format!("err:{}", kind(&rejected.error)),

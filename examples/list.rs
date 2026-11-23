@@ -27,12 +27,20 @@ impl Item for Task {
 fn main() -> Result<(), staquia::Error<u32>> {
     let mut list = LexicalList::new(Staquia::default());
     for (id, title) in [(1, "Write"), (2, "Review"), (3, "Publish")] {
-        list.push(Task { id, title, position: String::new() })?;
+        list.push(Task {
+            id,
+            title,
+            position: String::new(),
+        })?;
     }
 
     // Moves "Publish" between "Write" and "Review": only its row needs to be saved
     let moved = list.move_to(&3, Some(&1), Some(&2))?;
-    println!("save {} -> {:?}", moved.value().title, moved.value().position);
+    println!(
+        "save {} -> {:?}",
+        moved.value().title,
+        moved.value().position
+    );
 
     for item in &list {
         println!("{:>8}  {}", item.value().title, item.value().position);
