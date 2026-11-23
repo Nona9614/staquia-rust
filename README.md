@@ -1,11 +1,12 @@
-# Staquia (Rust)
+# staquia
 
 Staquia is a configurable, zero dependency, lexicographic **position** algorithm. It solves the reinsertion and sorting problem of long lists: every item stores a short string position, and sorting those strings gives the order of the list.
 
 When an item is moved, only **its own** position changes, the surrounding items never need to be updated. This makes it ideal for lists and tables stored in a database, where reordering one row should mean writing one row.
 
-This crate is the Rust version of the [staquia](https://nona9614.github.io/staquia-js/) JavaScript library (0.5.0). For the same system and operations both create **the same positions**, so a Rust service can read and write the positions stored by a JavaScript app. The tests replay more than 20,000 operations recorded with the JavaScript library and assert the same strings.
+This crate is the Rust version of the [staquia](https://nona9614.github.io/staquia-js/) JavaScript library (0.5.0). For the same system and operations both create **the same positions**, so a Rust service can read and write the positions stored by a JavaScript app. The tests of the repository replay more than 20,000 operations recorded with the JavaScript library and assert the same strings.
 
+- [Install](#install)
 - [Quick start](#quick-start)
 - [How positions work](#how-positions-work)
 - [Creating a system](#creating-a-system)
@@ -14,6 +15,15 @@ This crate is the Rust version of the [staquia](https://nona9614.github.io/staqu
 - [Lexical list](#lexical-list)
 - [Differences with JavaScript](#differences-with-javascript)
 - [Running the tests](#running-the-tests)
+- [License](#license)
+
+## Install
+
+```bash
+cargo add staquia
+```
+
+The crate has no dependencies and no `unsafe` code, and needs Rust 1.88 or later. The API documentation is on [docs.rs](https://docs.rs/staquia), and the guides of the [JavaScript site](https://nona9614.github.io/staquia-js/) (how positions work, using them in a database) apply to both languages.
 
 ## Quick start
 
@@ -48,7 +58,7 @@ fn main() -> Result<(), staquia::Error<u32>> {
 }
 ```
 
-More in [`examples/`](examples): `cargo run --example basic` and `cargo run --example list`.
+More in the `examples/` folder: `cargo run --example basic` and `cargo run --example list`.
 
 ## How positions work
 
@@ -196,8 +206,12 @@ algorithms (`number.test.ts`, `algorithms.test.ts`, `composer.test.ts`, `forger.
 `src/`, `staquia.spec.ts` is `tests/staquia.rs` and `lexical-list.spec.ts` is `tests/list.rs`. The tests of the
 Rust-only API are in `tests/rust_*.rs`.
 
-`tests/cross_language.rs` replays the operations recorded in `tests/fixtures/*.tsv` with the JavaScript library. To record them again, from the `javascript/` folder:
+`tests/cross_language.rs` replays the operations recorded in `tests/fixtures/*.tsv` with the JavaScript library. These fixtures (1.5 MB) are only in the repository, not in the published crate, whose other tests still run with `cargo test`. To record them again, from the `javascript/` folder of the staquia repository:
 
 ```bash
 node_modules/.bin/tsx ../rust/tests/fixtures/generate.ts
 ```
+
+## License
+
+MIT (see `LICENCE`), the same as the JavaScript library.
