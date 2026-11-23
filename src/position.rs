@@ -52,7 +52,7 @@ impl Signature {
 ///
 /// assert_eq!(start.to_string(), "mmmmm!");
 /// assert!(start < next);
-/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// # Ok::<(), staquia::Error>(())
 /// ```
 #[derive(Clone, Copy)]
 pub struct Position {
@@ -90,7 +90,7 @@ impl Position {
     ///
     /// assert_eq!(position.n(), &[1, 2, 3, 4, 5]);
     /// assert_eq!(position.z(), &[6, 7]);
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     pub fn n(&self) -> &[u16] {
         &self.digits[..self.signature.ln as usize]

@@ -25,7 +25,7 @@
 //! let mut positions = [second.to_string(), first.to_string(), between.to_string()];
 //! positions.sort();
 //! assert_eq!(positions, ["mmmmm!", "mmmmmn", "mmmmn!"]);
-//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! # Ok::<(), staquia::Error>(())
 //! ```
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
@@ -38,7 +38,7 @@ mod list;
 mod position;
 mod staquia;
 
-pub use error::{CreateError, Direction, LexicalError, PositionError, Rejected};
+pub use error::{CreateError, Direction, Error, LexicalError, PositionError, Rejected};
 pub use list::{Item, Iter, LexicalItem, LexicalList, Replaced};
 pub use position::Position;
 pub use staquia::{Options, Staquia};

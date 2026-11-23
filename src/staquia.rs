@@ -17,7 +17,7 @@ use crate::{MAX_LENGTH, Position};
 /// // The default characters with a longer `N` section
 /// let system = Staquia::create_with_options(Options { ln: 6, ..Options::default() })?;
 /// assert_eq!(system.start()?.to_string(), "ʰʰʰʰʰʰ!");
-/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// # Ok::<(), staquia::Error>(())
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Options {
@@ -65,7 +65,7 @@ impl Default for Options {
 ///
 /// assert_eq!(core.to_string(), "mmmmmn");
 /// assert!(start < core && core < next);
-/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// # Ok::<(), staquia::Error>(())
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Staquia {
@@ -85,7 +85,7 @@ impl Default for Staquia {
     ///
     /// let system = Staquia::default();
     /// assert_eq!(system.start()?.to_string(), "ʰʰʰʰʰ!");
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     fn default() -> Self {
         match Self::create_with_options(Options::default()) {
@@ -117,7 +117,7 @@ impl Staquia {
     /// let alphabet = Staquia::create('!', 'a', 'z', 5, 15, 0.15)?;
     /// assert_eq!(alphabet.base(), 27);
     /// assert_eq!(alphabet.start()?.to_string(), "mmmmm!");
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     pub fn create(zero: char, first: char, last: char, ln: usize, lz: usize, threshold: f64) -> Result<Self, CreateError> {
         Self::create_with_options(Options { zero, first, last, ln, lz, threshold })
@@ -306,7 +306,7 @@ impl Staquia {
     /// // Rebuilds the same position from its digits
     /// let copy = system.from_digits(start.digits())?;
     /// assert_eq!(copy.to_string(), "mmmmm!");
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     ///
     /// # Errors
@@ -343,7 +343,7 @@ impl Staquia {
     /// // Every character must be a digit of the system: the zero or a character from first to last
     /// let invalid = system.forge("abC");
     /// assert!(matches!(invalid, Err(PositionError::InvalidCharacter { character: 'C', index: 2 })));
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     ///
     /// # Errors
@@ -380,7 +380,7 @@ impl Staquia {
     /// // The middle digit of "a" to "z" (with the zero "!") is "m"
     /// let system = Staquia::create('!', 'a', 'z', 5, 15, 0.15)?;
     /// assert_eq!(system.start()?.to_string(), "mmmmm!");
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     ///
     /// # Errors
@@ -404,7 +404,7 @@ impl Staquia {
     ///
     /// let next = system.next(&system.start()?)?;
     /// assert_eq!(next.to_string(), "mmmmn!");
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     ///
     /// # Errors
@@ -433,7 +433,7 @@ impl Staquia {
     ///
     /// let previous = system.previous(&system.start()?)?;
     /// assert_eq!(previous.to_string(), "mmmml!");
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     ///
     /// # Errors
@@ -469,7 +469,7 @@ impl Staquia {
     /// // There is room in N between "a!!!!!" and "b!!!!!"
     /// let room = system.core(&system.forge("a")?, &system.forge("b")?)?;
     /// assert_eq!(room.to_string(), "ammmn!");
-    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # Ok::<(), staquia::Error>(())
     /// ```
     ///
     /// # Errors

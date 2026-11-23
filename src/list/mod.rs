@@ -164,7 +164,7 @@ pub type Replaced<'a, T> = Result<Vec<&'a LexicalItem<T>>, Rejected<<T as Item>:
 ///
 /// let order: Vec<u32> = list.iter().map(|item| item.value().id).collect();
 /// assert_eq!(order, [1, 3, 2]);
-/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// # Ok::<(), staquia::Error<u32>>(())
 /// ```
 pub struct LexicalList<T: Item> {
     system: Staquia,
