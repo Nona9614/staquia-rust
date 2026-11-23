@@ -109,3 +109,6 @@ impl Digits {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

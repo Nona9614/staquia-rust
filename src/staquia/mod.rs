@@ -236,3 +236,6 @@ impl Staquia {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -1,9 +1,12 @@
-//! The public API of `Staquia` and `Position`, ported from the JavaScript `staquia.spec.ts`.
+//! The port of the JavaScript `tests/specs/integration-tests/staquia.spec.ts` (34 tests): the public API of
+//! `Staquia`. The tests keep the names of the JavaScript methods.
+//!
+//! The library contract is that positions sorted as plain strings keep the same order as the list, so every
+//! generated position must respect the string order and the `Ord` of `Position`.
 
-use std::collections::HashSet;
+use staquia::{Position, PositionError, Staquia};
 
-use staquia::{CreateError, Direction, MAX_LENGTH, Options, Position, PositionError, Staquia};
-
+/// ln = 4, lz = 12 → lmax = 16, fϰ = 0.15 → lϰ = 14.
 fn system() -> Staquia {
     Staquia::create('!', 'a', 'z', 4, 12, 0.15).expect("valid system")
 }
@@ -14,24 +17,132 @@ fn forge(string: &str) -> Position {
 
 /// `left` is strictly before `right` both as strings (what a database sorts) and as positions.
 fn assert_before(left: &Position, right: &Position) {
+    let (l, r) = (left.to_string(), right.to_string());
+    assert!(l < r, "The position string '{l}' must sort before '{r}'.");
     assert!(
-        left.to_string() < right.to_string(),
-        "'{left}' must sort before '{right}' as a string"
+        left < right,
+        "The position '{l}' must compare as less than '{r}'."
     );
-    assert!(left < right, "'{left}' must be less than '{right}'");
-    assert!(right > left, "'{right}' must be greater than '{left}'");
+    assert!(
+        right > left,
+        "The position '{r}' must compare as greater than '{l}'."
+    );
 }
 
+/// The result failed with an overflow.
+fn assert_overflow(result: Result<Position, PositionError>, label: &str) {
+    match result {
+        Ok(position) => panic!("{label} must fail with an overflow but returned '{position}'."),
+        Err(error) => assert!(
+            error.is_overflow(),
+            "{label} must fail with an overflow but got '{error}'."
+        ),
+    }
+}
+
+/// The result failed because of a position from another system.
+fn assert_mismatch(result: Result<Position, PositionError>, label: &str) {
+    match result {
+        Ok(position) => {
+            panic!("{label} must fail with a system mismatch but returned '{position}'.")
+        }
+        Err(error) => assert!(
+            error.is_mismatch(),
+            "{label} must fail with a system mismatch but got '{error}'."
+        ),
+    }
+}
+
+/// The result failed because of a character that is not a digit.
+fn assert_invalid(string: &str, index: usize) {
+    match system().forge(string) {
+        Ok(position) => panic!("forge('{string}') must fail but returned '{position}'."),
+        Err(PositionError::InvalidCharacter { index: actual, .. }) => {
+            assert_eq!(
+                actual, index,
+                "forge('{string}') must fail at the index {index}."
+            );
+        }
+        Err(error) => {
+            panic!("forge('{string}') must fail with an invalid character but got '{error}'.")
+        }
+    }
+}
+
+/// The system positions use only its characters and round-trip through `forge`.
+fn assert_system(system: &Staquia, characters: &str, label: &str) {
+    let start = system.start().unwrap();
+    let next = system.next(&start).unwrap();
+    for position in [start, next, system.core(&start, &next).unwrap()] {
+        let string = position.to_string();
+        assert!(
+            string.chars().all(|ch| characters.contains(ch)),
+            "{label}: the position '{string}' uses characters from another system."
+        );
+        let forged = system.forge(&string).unwrap();
+        assert_eq!(
+            forged.to_string(),
+            string,
+            "{label}: '{string}' does not round-trip."
+        );
+        assert_eq!(forged, position, "{label}: '{string}' does not round-trip.");
+    }
+}
+
+/// Narrows the gap between two adjacent positions from one side until the threshold.
+fn narrow_until_threshold(from_left: bool) {
+    let system = system();
+    let mut left = system.start().unwrap();
+    let mut right = system.next(&left).unwrap();
+    for i in 0..500 {
+        match system.core(&left, &right) {
+            Ok(core) => {
+                assert_before(&left, &core);
+                assert_before(&core, &right);
+                if from_left { left = core } else { right = core }
+            }
+            Err(error) => {
+                assert!(
+                    error.is_dangerous() || error.is_overflow(),
+                    "The narrowing must stop at the threshold, got '{error}'."
+                );
+                assert!(
+                    i > 0,
+                    "The system must allow at least one insertion between adjacent positions."
+                );
+                return;
+            }
+        }
+    }
+    panic!("The gap was narrowed 500 times without reaching the threshold.");
+}
+
+const ALPHABET: &str = "!abcdefghijklmnopqrstuvwxyz";
+const DIGITS: &str = "#0123456789";
+
+// Forge
+
+/// Should pad a 3 character string to the right with zeroes.
 #[test]
-fn forge_pads_n_with_zeroes_to_the_right() {
+fn staquia_forge_pads_three_characters() {
     assert_eq!(forge("abc").to_string(), "abc!!");
-    assert_eq!(forge("xy").to_string(), "xy!!!");
-    assert_eq!(forge("b").to_string(), "b!!!!");
-    assert_eq!(forge("").to_string(), "!!!!!");
 }
 
+/// Should pad a 2 character string to the right with zeroes.
 #[test]
-fn forge_keeps_the_string_order() {
+fn staquia_forge_pads_two_characters() {
+    assert_eq!(forge("xy").to_string(), "xy!!!");
+}
+
+/// Should pad a single character string to the right with zeroes.
+#[test]
+fn staquia_forge_pads_one_character() {
+    assert_eq!(forge("b").to_string(), "b!!!!");
+}
+
+/// Should keep the string order of the forged strings.
+#[test]
+fn staquia_forge_keeps_order() {
     let strings = ["abc", "abcs", "b", "bbbb", "mmmm!m", "mmmma", "xy", "zzzz"];
     let positions: Vec<Position> = strings.iter().map(|s| forge(s)).collect();
     for pair in positions.windows(2) {
@@ -39,8 +150,9 @@ fn forge_keeps_the_string_order() {
     }
 }
 
+/// Should forge back the same position from its string representation.
 #[test]
-fn forge_round_trips() {
+fn staquia_forge_round_trip() {
     let system = system();
     let start = system.start().unwrap();
     let next = system.next(&start).unwrap();
@@ -52,63 +164,84 @@ fn forge_round_trips() {
     ] {
         let forged = system.forge(&position.to_string()).unwrap();
         assert_eq!(forged.to_string(), position.to_string());
-        assert_eq!(forged, position);
-    }
-}
-
-#[test]
-fn forge_rejects_characters_that_are_not_digits() {
-    let system = system();
-    for (string, character, index) in [
-        ("¼¼¼¼¿!", '¼', 0),
-        ("abcD", 'D', 3),
-        ("ab{c", '{', 2),
-        ("mmmm!m😀", '😀', 6),
-        ("a\"aa", '"', 1),
-        ("aa`a", '`', 2),
-        ("aaa0", '0', 3),
-    ] {
         assert_eq!(
-            system.forge(string),
-            Err(PositionError::InvalidCharacter { character, index }),
-            "{string}"
+            forged, position,
+            "The forged '{forged}' must be equal to '{position}'."
         );
     }
-    assert_eq!(system.forge("!azz!a").unwrap().to_string(), "!azz!a");
 }
 
+/// Should reject characters that are not digits of the system.
 #[test]
-fn compares_different_z_lengths_by_their_string_order() {
+fn staquia_forge_rejects_foreign_characters() {
+    assert_invalid("¼¼¼¼¿!", 0); // From another system
+    assert_invalid("abcD", 3); // Uppercase is below 'a'
+    assert_invalid("ab{c", 2); // Right after the last character 'z'
+    assert_invalid("mmmm!m😀", 6); // Outside the Basic Multilingual Plane
+}
+
+/// Should reject characters between the zero and the first character.
+#[test]
+fn staquia_forge_rejects_characters_between_zero_and_first() {
+    assert_invalid("a\"aa", 1);
+    assert_invalid("aa`a", 2);
+    assert_invalid("aaa0", 3);
+}
+
+/// Should accept the zero, the first and the last characters.
+#[test]
+fn staquia_forge_accepts_edge_characters() {
+    assert_eq!(forge("!azz!a").to_string(), "!azz!a");
+}
+
+// Compare
+
+/// Should compare positions with different z lengths by their string order.
+#[test]
+fn staquia_compare_different_z_lengths() {
     assert_before(&forge("mmmm!m"), &forge("mmmma"));
     assert_before(&forge("mmmm!"), &forge("mmmm!m"));
     assert_before(&forge("mmmma"), &forge("mmmmaa"));
     assert_before(&forge("mmmm!z"), &forge("mmmma!"));
 }
 
+/// Should consider trailing zeroes as equal positions.
 #[test]
-fn trailing_zeroes_are_equal_with_the_same_hash() {
-    let (left, right) = (forge("mmmma"), forge("mmmma!!"));
-    assert_eq!(left, right);
-    let set: HashSet<Position> = [left, right].into_iter().collect();
-    assert_eq!(set.len(), 1);
+fn staquia_compare_trailing_zeroes() {
+    assert_eq!(forge("mmmma"), forge("mmmma!!"));
 }
 
+// Next & previous
+
+/// Should generate strictly increasing positions with next.
 #[test]
-fn next_and_previous_are_strictly_monotonic_and_inverse() {
+fn staquia_next_is_increasing() {
     let system = system();
-    let start = system.start().unwrap();
-    let mut position = start;
-    for _ in 0..200 {
+    let mut position = system.start().unwrap();
+    for _ in 0..100 {
         let next = system.next(&position).unwrap();
         assert_before(&position, &next);
         position = next;
     }
-    let mut position = start;
-    for _ in 0..200 {
+}
+
+/// Should generate strictly decreasing positions with previous.
+#[test]
+fn staquia_previous_is_decreasing() {
+    let system = system();
+    let mut position = system.start().unwrap();
+    for _ in 0..100 {
         let previous = system.previous(&position).unwrap();
         assert_before(&previous, &position);
         position = previous;
     }
+}
+
+/// Should return to the same position when going next and then previous.
+#[test]
+fn staquia_next_previous_round_trip() {
+    let system = system();
+    let start = system.start().unwrap();
     assert_eq!(
         system.previous(&system.next(&start).unwrap()).unwrap(),
         start
@@ -119,111 +252,163 @@ fn next_and_previous_are_strictly_monotonic_and_inverse() {
     );
 }
 
+// N edges
+
+/// Should keep the leading zeroes of N when going next.
 #[test]
-fn next_and_previous_keep_the_leading_zeroes_of_n() {
+fn staquia_next_keeps_leading_zeroes() {
     let system = system();
     let next = |s: &str| system.next(&forge(s)).unwrap().to_string();
-    let previous = |s: &str| system.previous(&forge(s)).unwrap().to_string();
     assert_eq!(next("!!!a"), "!!!b!");
     assert_eq!(next("!!ab"), "!!ac!");
     assert_eq!(next("!!!z"), "!!a!!");
     assert_eq!(next("!abc"), "!abd!");
+}
+
+/// Should keep the leading zeroes of N when going previous.
+#[test]
+fn staquia_previous_keeps_leading_zeroes() {
+    let system = system();
+    let previous = |s: &str| system.previous(&forge(s)).unwrap().to_string();
     assert_eq!(previous("!!ab"), "!!aa!");
     assert_eq!(previous("!!a!"), "!!!z!");
     assert_eq!(previous("!!!b"), "!!!a!");
     assert_eq!(previous("a!!!"), "!zzz!");
-    assert_eq!(next("zzzy"), "zzzz!");
-    assert_eq!(previous("!!!a"), "!!!!!");
 }
 
+/// Should reach the last and first values of N without errors.
 #[test]
-fn next_and_previous_fail_at_the_edges_of_n() {
+fn staquia_n_edges_reachable() {
     let system = system();
-    for string in ["zzzz", "zzzzm"] {
-        let position = forge(string);
-        assert_eq!(
-            system.next(&position),
-            Err(PositionError::EdgeReached {
-                position,
-                direction: Direction::Next
-            })
-        );
-    }
-    for string in ["!!!!", "!!!!a"] {
-        let position = forge(string);
-        let error = system.previous(&position).unwrap_err();
-        assert_eq!(
-            error,
-            PositionError::EdgeReached {
-                position,
-                direction: Direction::Previous
-            }
-        );
-        assert!(error.is_overflow());
-    }
+    assert_eq!(system.next(&forge("zzzy")).unwrap().to_string(), "zzzz!");
+    assert_eq!(
+        system.previous(&forge("!!!a")).unwrap().to_string(),
+        "!!!!!"
+    );
 }
 
+/// Should fail with an overflow when going next from the last value of N.
 #[test]
-fn walking_never_wraps_around() {
+fn staquia_next_overflow() {
+    let system = system();
+    assert_overflow(system.next(&forge("zzzz")), "next('zzzz')");
+    assert_overflow(system.next(&forge("zzzzm")), "next('zzzzm')");
+}
+
+/// Should fail with an overflow when going previous from the first value of N.
+#[test]
+fn staquia_previous_overflow() {
+    let system = system();
+    assert_overflow(system.previous(&forge("!!!!")), "previous('!!!!')");
+    assert_overflow(system.previous(&forge("!!!!a")), "previous('!!!!a')");
+}
+
+/// Should never wrap around when walking next until the end of N.
+#[test]
+fn staquia_next_walk_to_end() {
     let system = system();
     let mut position = forge("zzyr");
-    loop {
+    for _ in 0..100 {
         match system.next(&position) {
             Ok(next) => {
                 assert_before(&position, &next);
                 position = next;
             }
             Err(error) => {
-                assert!(error.is_overflow());
-                assert_eq!(position.to_string(), "zzzz!");
-                break;
+                assert!(
+                    error.is_overflow(),
+                    "next('{position}') must fail with an overflow."
+                );
+                assert_eq!(
+                    position.to_string(),
+                    "zzzz!",
+                    "The overflow must happen only at the last value of N."
+                );
+                return;
             }
         }
     }
+    panic!("The end of N was never reached.");
+}
+
+/// Should never wrap around when walking previous until the start of N.
+#[test]
+fn staquia_previous_walk_to_start() {
+    let system = system();
     let mut position = forge("!!ah");
-    loop {
+    for _ in 0..100 {
         match system.previous(&position) {
             Ok(previous) => {
                 assert_before(&previous, &position);
                 position = previous;
             }
             Err(error) => {
-                assert!(error.is_overflow());
-                assert_eq!(position.to_string(), "!!!!!");
-                break;
+                assert!(
+                    error.is_overflow(),
+                    "previous('{position}') must fail with an overflow."
+                );
+                assert_eq!(
+                    position.to_string(),
+                    "!!!!!",
+                    "The overflow must happen only at the first value of N."
+                );
+                return;
             }
         }
     }
+    panic!("The start of N was never reached.");
 }
 
+// Core
+
+/// Should generate a position strictly between two adjacent positions.
 #[test]
-fn core_narrows_a_gap_until_the_threshold() {
+fn staquia_core_between_adjacent() {
     let system = system();
-    for from_left in [true, false] {
-        let mut left = system.start().unwrap();
-        let mut right = system.next(&left).unwrap();
-        let mut insertions = 0;
-        loop {
-            match system.core(&left, &right) {
-                Ok(core) => {
-                    assert_before(&left, &core);
-                    assert_before(&core, &right);
-                    insertions += 1;
-                    if from_left { left = core } else { right = core }
-                }
-                Err(error) => {
-                    assert!(error.is_dangerous() || error.is_overflow(), "{error}");
-                    assert!(insertions > 0);
-                    break;
-                }
-            }
-            assert!(insertions < 500, "the gap never reached the threshold");
-        }
-    }
+    let start = system.start().unwrap();
+    let next = system.next(&start).unwrap();
+    let core = system.core(&start, &next).unwrap();
+    assert_before(&start, &core);
+    assert_before(&core, &next);
 }
 
+/// Should keep the order while narrowing a gap from the right until the threshold.
 #[test]
-fn core_ignores_the_order_of_its_arguments() {
+fn staquia_core_narrow_from_right() {
+    narrow_until_threshold(false);
+}
+
+/// Should keep the order while narrowing a gap from the left until the threshold.
+#[test]
+fn staquia_core_narrow_from_left() {
+    narrow_until_threshold(true);
+}
+
+/// Should return the error of a failed result passed as an argument. Rust passes positions, not results:
+/// chaining with `and_then` (or `?`) gives back the same error.
+#[test]
+fn staquia_core_failed_argument() {
+    let system = system();
+    let start = system.start().unwrap();
+    let failed = system.next(&forge("zzzz"));
+    let error = failed.unwrap_err();
+    let as_next = failed.and_then(|next| system.core(&start, &next));
+    assert_eq!(
+        as_next,
+        Err(error),
+        "A failed next argument must fail the core."
+    );
+    let as_previous = failed.and_then(|previous| system.core(&previous, &start));
+    assert_eq!(
+        as_previous,
+        Err(error),
+        "A failed previous argument must fail the core."
+    );
+}
+
+/// Should generate the same position regardless of the arguments order.
+#[test]
+fn staquia_core_argument_order() {
     let system = system();
     let start = system.start().unwrap();
     let next = system.next(&system.next(&start).unwrap()).unwrap();
@@ -233,190 +418,156 @@ fn core_ignores_the_order_of_its_arguments() {
     );
 }
 
+// Systems
+
+/// Should print each system positions with its own characters.
 #[test]
-fn threshold_reached_keeps_the_valid_position() {
+fn staquia_systems_independent() {
+    let alphabet = Staquia::create('!', 'a', 'z', 4, 12, 0.15).unwrap();
+    let digits = Staquia::create('#', '0', '9', 4, 12, 0.15).unwrap();
+    let before = alphabet.start().unwrap().to_string();
+    assert_system(&alphabet, ALPHABET, "alphabet");
+    assert_system(&digits, DIGITS, "digits");
+    // Creating more systems after must not change the previous ones
+    Staquia::create('~', 'A', 'Z', 3, 8, 0.15).unwrap_err();
+    let _ = Staquia::default();
+    assert_system(&alphabet, ALPHABET, "alphabet");
+    assert_system(&digits, DIGITS, "digits");
+    assert_eq!(alphabet.start().unwrap().to_string(), before);
+}
+
+/// Should keep printing an existing position the same after creating other systems.
+#[test]
+fn staquia_systems_existing_position() {
+    let alphabet = Staquia::create('!', 'a', 'z', 4, 12, 0.15).unwrap();
+    let position = alphabet.forge("abcd").unwrap();
+    let _ = Staquia::default();
+    assert_eq!(position.to_string(), "abcd!");
+    assert_eq!(format!("{position}"), "abcd!");
+}
+
+/// Should not modify the shared Position class. In Rust a position prints with the signature it carries,
+/// so positions of different systems are the same type and never affect each other.
+#[test]
+fn staquia_systems_base_untouched() {
+    let alphabet = Staquia::create('!', 'a', 'z', 4, 12, 0.15).unwrap();
+    let digits = Staquia::create('#', '0', '9', 4, 12, 0.15).unwrap();
+    let positions: [Position; 2] = [alphabet.start().unwrap(), digits.start().unwrap()];
+    assert_eq!(positions.map(|p| p.to_string()), ["mmmm!", "4444#"]);
+}
+
+/// Should create positions that are instances of Position. In Rust: plain `Position` values, printed with
+/// `Display` (the string is not a stored field).
+#[test]
+fn staquia_systems_instance_of() {
+    let position: Position = system().start().unwrap();
+    assert_eq!(format!("{position:?}"), "Position(\"mmmm!\")");
+    assert_eq!(position.len(), 5);
+}
+
+/// Should support a custom position class shared by many systems without modifying it. In Rust: a trait
+/// of your own adds methods to the positions of every system.
+#[test]
+fn staquia_systems_custom_position() {
+    trait Custom {
+        fn custom(&self) -> String;
+    }
+    impl Custom for Position {
+        fn custom(&self) -> String {
+            format!("custom {self}")
+        }
+    }
+    let alphabet = Staquia::create('!', 'a', 'z', 4, 12, 0.15).unwrap();
+    let digits = Staquia::create('#', '0', '9', 4, 12, 0.15).unwrap();
+    assert_system(&alphabet, ALPHABET, "alphabet");
+    assert_system(&digits, DIGITS, "digits");
+    assert_eq!(alphabet.start().unwrap().custom(), "custom mmmm!");
+    assert_eq!(digits.start().unwrap().custom(), "custom 4444#");
+}
+
+/// Should accept positions from another system with the same configuration.
+#[test]
+fn staquia_systems_same_configuration() {
+    let first = Staquia::create('!', 'a', 'z', 4, 12, 0.15).unwrap();
+    let second = Staquia::create('!', 'a', 'z', 4, 12, 0.15).unwrap();
+    let start = first.start().unwrap();
+    assert_eq!(second.next(&start).unwrap().to_string(), "mmmn!");
+    assert_eq!(second.previous(&start).unwrap().to_string(), "mmml!");
+    second.core(&start, &second.next(&start).unwrap()).unwrap();
+    // The default system is the same configuration every time it is created
+    Staquia::default()
+        .next(&Staquia::default().start().unwrap())
+        .unwrap();
+}
+
+/// Should reject positions from a system with a different configuration.
+#[test]
+fn staquia_systems_mismatch() {
+    let alphabet = Staquia::create('!', 'a', 'z', 4, 12, 0.15).unwrap();
+    let digits = Staquia::create('#', '0', '9', 4, 12, 0.15).unwrap();
+    let longer = Staquia::create('!', 'a', 'z', 5, 12, 0.15).unwrap();
+    let own = alphabet.start().unwrap();
+    let foreign = digits.start().unwrap();
+    assert_mismatch(alphabet.next(&foreign), "next");
+    assert_mismatch(alphabet.previous(&foreign), "previous");
+    assert_mismatch(alphabet.core(&own, &foreign), "core(own, foreign)");
+    assert_mismatch(alphabet.core(&foreign, &own), "core(foreign, own)");
+    // The same characters with a different `n` length give the digits another meaning
+    assert_mismatch(longer.next(&own), "next with a different n length");
+}
+
+// Sync checks
+
+/// Should agree with the errors returned by forge at every length boundary. A position longer than the
+/// maximum can't exist in Rust, so the overflow length is checked through the error.
+#[test]
+fn staquia_sync_checks_agree_with_errors() {
     let system = system();
-    // ln + lz = 16, the threshold is ceil(0.85 * 16) = 14
-    assert_eq!(system.threshold_length(), 14);
-    let error = system.forge("mmmmabcdefghij").unwrap_err();
-    let PositionError::ThresholdReached {
-        position,
-        length,
-        threshold,
-    } = error
-    else {
-        panic!("{error}")
+    for length in [13, 14, 15, 16, 17] {
+        let string = format!("mmmm{}", "a".repeat(length - 4));
+        match system.forge(&string) {
+            Ok(position) => {
+                assert!(
+                    !system.has_overflow(&position),
+                    "hasOverflow with the length {length}."
+                );
+                assert!(
+                    !system.is_threshold_reached(&position),
+                    "isThresholdReached with the length {length}."
+                );
+            }
+            Err(PositionError::ThresholdReached { position, .. }) => {
+                assert!(
+                    !system.has_overflow(&position),
+                    "hasOverflow with the length {length}."
+                );
+                assert!(
+                    system.is_threshold_reached(&position),
+                    "isThresholdReached with the length {length}."
+                );
+            }
+            Err(error) => {
+                assert_eq!(
+                    error,
+                    PositionError::Overflow { length, limit: 16 },
+                    "The length {length}."
+                );
+                assert!(length > 16);
+            }
+        }
+    }
+}
+
+/// Should not consider a position with the max length an overflow.
+#[test]
+fn staquia_sync_checks_max_length() {
+    let system = system();
+    let error = system
+        .forge(&format!("mmmm{}", "a".repeat(12)))
+        .unwrap_err();
+    let PositionError::ThresholdReached { position, .. } = error else {
+        panic!("A position with the length lmax only reaches the threshold, got '{error}'.")
     };
-    assert_eq!(
-        (position.to_string().as_str(), length, threshold),
-        ("mmmmabcdefghij", 14, 14)
-    );
-    assert!(system.is_threshold_reached(&position));
     assert!(!system.has_overflow(&position));
-    assert_eq!(
-        system.forge("mmmmabcdefghijklm"),
-        Err(PositionError::Overflow {
-            length: 17,
-            limit: 16
-        })
-    );
-}
-
-#[test]
-fn positions_of_other_systems_cannot_be_mixed() {
-    let alphabet = system();
-    let digits = Staquia::create('#', '0', '9', 4, 12, 0.15).unwrap();
-    let position = digits.start().unwrap();
-    assert_eq!(position.to_string(), "4444#");
-    assert!(!alphabet.owns(&position));
-    assert_eq!(
-        alphabet.next(&position),
-        Err(PositionError::SystemMismatch { position })
-    );
-    assert_eq!(
-        alphabet.core(&alphabet.start().unwrap(), &position),
-        Err(PositionError::SystemMismatch { position })
-    );
-    // The same configuration is compatible
-    let twin = system();
-    assert!(twin.owns(&alphabet.start().unwrap()));
-}
-
-#[test]
-fn each_system_prints_its_own_characters() {
-    let alphabet = system();
-    let digits = Staquia::create('#', '0', '9', 4, 12, 0.15).unwrap();
-    for (system, allowed) in [
-        (alphabet, "!abcdefghijklmnopqrstuvwxyz"),
-        (digits, "#0123456789"),
-    ] {
-        let start = system.start().unwrap();
-        let next = system.next(&start).unwrap();
-        for position in [start, next, system.core(&start, &next).unwrap()] {
-            let string = position.to_string();
-            assert!(string.chars().all(|ch| allowed.contains(ch)), "{string}");
-            assert_eq!(system.forge(&string).unwrap(), position);
-        }
-    }
-}
-
-#[test]
-fn the_default_system_is_the_javascript_one() {
-    let system = Staquia::default();
-    assert_eq!(system.options(), Options::default());
-    assert_eq!(system.base(), 1027);
-    assert_eq!(system.start().unwrap().to_string(), "ʰʰʰʰʰ!");
-    let same = Staquia::create('!', '\u{00B0}', '\u{04B1}', 5, 15, 0.15).unwrap();
-    assert_eq!(same, system);
-}
-
-#[test]
-fn create_with_options_changes_only_the_given_fields() {
-    let system = Staquia::create_with_options(Options {
-        ln: 6,
-        ..Options::default()
-    })
-    .unwrap();
-    assert_eq!((system.ln(), system.lz(), system.max_length()), (6, 15, 21));
-    assert_eq!(system.start().unwrap().to_string(), "ʰʰʰʰʰʰ!");
-}
-
-#[test]
-fn create_validates_the_configuration() {
-    assert!(matches!(
-        Staquia::create('a', '!', 'z', 5, 15, 0.15),
-        Err(CreateError::Order { .. })
-    ));
-    assert!(matches!(
-        Staquia::create('!', 'z', 'a', 5, 15, 0.15),
-        Err(CreateError::Order { .. })
-    ));
-    assert!(matches!(
-        Staquia::create('!', 'a', '😀', 5, 15, 0.15),
-        Err(CreateError::Character('😀'))
-    ));
-    assert!(matches!(
-        Staquia::create('!', 'a', '\u{E000}', 5, 15, 0.15),
-        Err(CreateError::Character(_))
-    ));
-    assert!(matches!(
-        Staquia::create('!', 'a', 'z', 0, 15, 0.15),
-        Err(CreateError::Length { .. })
-    ));
-    assert!(matches!(
-        Staquia::create('!', 'a', 'z', 5, 0, 0.15),
-        Err(CreateError::Length { .. })
-    ));
-    assert!(matches!(
-        Staquia::create('!', 'a', 'z', 20, MAX_LENGTH - 19, 0.15),
-        Err(CreateError::Length { .. })
-    ));
-    assert!(matches!(
-        Staquia::create('!', 'a', 'z', 5, 15, 1.5),
-        Err(CreateError::Threshold(_))
-    ));
-    assert!(matches!(
-        Staquia::create('!', 'a', 'z', 5, 15, f64::NAN),
-        Err(CreateError::Threshold(_))
-    ));
-    assert!(Staquia::create('!', 'a', 'z', 20, MAX_LENGTH - 20, 0.15).is_ok());
-    assert!(Staquia::create('!', '\u{E000}', '\u{FFFF}', 5, 15, 0.15).is_ok());
-}
-
-#[test]
-fn from_digits_is_the_inverse_of_digits() {
-    let system = system();
-    let position = forge("abcdefg");
-    assert_eq!(
-        (position.n(), position.z()),
-        (&[1, 2, 3, 4][..], &[5, 6, 7][..])
-    );
-    assert_eq!(system.from_digits(position.digits()).unwrap(), position);
-    assert_eq!(
-        system.from_digits(&[1, 30]),
-        Err(PositionError::InvalidCharacter {
-            character: '~',
-            index: 1
-        })
-    );
-}
-
-#[test]
-fn sorting_positions_and_strings_gives_the_same_order() {
-    let system = system();
-    let start = system.start().unwrap();
-    let mut positions = vec![start];
-    let mut left = start;
-    let mut right = system.next(&start).unwrap();
-    positions.push(right);
-    for i in 0..10 {
-        let core = system.core(&left, &right).unwrap();
-        positions.push(core);
-        if i % 2 == 0 {
-            left = core
-        } else {
-            right = core
-        }
-        positions.push(system.previous(&positions[0]).unwrap());
-    }
-    let mut strings: Vec<String> = positions.iter().map(Position::to_string).collect();
-    positions.sort();
-    strings.sort();
-    assert_eq!(
-        positions
-            .iter()
-            .map(Position::to_string)
-            .collect::<Vec<_>>(),
-        strings
-    );
-}
-
-#[test]
-fn positions_are_small_stack_values() {
-    // Digits, length and signature, no pointer
-    assert!(size_of::<Position>() <= 2 * MAX_LENGTH + 24);
-    let a = system().start().unwrap();
-    let b = a; // Copy
-    assert_eq!(a, b);
-    assert_eq!(format!("{a:?}"), "Position(\"mmmm!\")");
+    assert!(system.is_threshold_reached(&position));
 }

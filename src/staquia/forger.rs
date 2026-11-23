@@ -14,13 +14,13 @@ fn n(position: &Position) -> Digits {
 }
 
 /// Every digit of a position as a number (JavaScript `raw`, with the position's own length).
-fn raw(position: &Position) -> Digits {
+pub(super) fn raw(position: &Position) -> Digits {
     Digits::from_slice(position.digits())
 }
 
 impl Staquia {
     /// Creates a position from a number of the algorithms (JavaScript `from`).
-    fn compose(&self, number: &Digits) -> Result<Position, PositionError> {
+    pub(super) fn compose(&self, number: &Digits) -> Result<Position, PositionError> {
         let length = (number.upper - number.lower + 1).max(0) as usize;
         let ln = self.ln() as i32;
         let mut n = Digits::new();

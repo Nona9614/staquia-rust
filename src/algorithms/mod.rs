@@ -22,3 +22,6 @@ pub(crate) use diverge::diverge;
 pub(crate) use half::half;
 pub(crate) use resolve_overflow::resolve_overflow;
 pub(crate) use substract::substract;
+
+#[cfg(test)]
+mod tests;

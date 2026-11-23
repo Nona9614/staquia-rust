@@ -38,6 +38,8 @@ mod list;
 mod number;
 mod position;
 mod staquia;
+#[cfg(test)]
+mod test_support;
 
 pub use error::{CreateError, Direction, Error, LexicalError, PositionError, Rejected};
 pub use list::{Item, Iter, LexicalItem, LexicalList, Replaced};
