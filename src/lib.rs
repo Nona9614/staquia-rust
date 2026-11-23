@@ -47,3 +47,8 @@ pub use staquia::{Options, Staquia};
 ///
 /// Positions live on the stack in an array of this size, so they never allocate.
 pub const MAX_LENGTH: usize = 32;
+
+/// Runs the examples of the README as doc tests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
