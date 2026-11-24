@@ -2,6 +2,7 @@
 
 use super::Staquia;
 use crate::Position;
+use crate::error::{Direction, PositionError};
 
 impl Staquia {
     /// Whether the position is longer than the [maximum length](Self::max_length) of this system.
@@ -21,7 +22,7 @@ impl Staquia {
     /// # Ok::<(), staquia::Error>(())
     /// ```
     pub fn has_overflow(&self, position: &Position) -> bool {
-        position.len() > self.lmax
+        position.measured() > self.lmax
     }
 
     /// Whether the position reached the [threshold length](Self::threshold_length) of this system.
@@ -39,7 +40,7 @@ impl Staquia {
     /// # Ok::<(), staquia::Error>(())
     /// ```
     pub fn is_threshold_reached(&self, position: &Position) -> bool {
-        position.len() >= self.lthreshold
+        position.measured() >= self.lthreshold
     }
 
     /// Whether the position was created by this system, or by one with the same characters and `ln` (its
@@ -60,5 +61,36 @@ impl Staquia {
     /// ```
     pub fn owns(&self, position: &Position) -> bool {
         *position.signature() == self.signature
+    }
+
+    /// Verifies that `count` positions can be stacked from [`start`](Self::start) with [`next`](Self::next),
+    /// without creating them: the last one is `start + (count - 1)` in `N`, so it is one addition of
+    /// `ln` digits. Fails with the same error the last `next` would return, so a list can check its room
+    /// before changing anything and still never use more memory than its items.
+    pub(crate) fn stack_room(&self, count: usize) -> Result<(), PositionError> {
+        let base = u64::from(self.base());
+        let middle = u64::from(self.code(self.middle()).unwrap_or(0));
+        let mut remaining = count.saturating_sub(1) as u64;
+        let mut carry = 0;
+        for _ in 0..self.ln() {
+            let digit = middle + remaining % base + carry;
+            carry = digit / base;
+            remaining /= base;
+        }
+        if carry == 0 && remaining == 0 {
+            return Ok(());
+        }
+        // `next` stops at the last value of `N`: every digit is `last`
+        let last = (self.base() - 1) as u16;
+        let edge = Position::new(
+            self.signature,
+            core::iter::repeat_n(last, self.ln()),
+            core::iter::once(0),
+        )
+        .measured_as(self.ln());
+        Err(PositionError::EdgeReached {
+            position: edge,
+            direction: Direction::Next,
+        })
     }
 }

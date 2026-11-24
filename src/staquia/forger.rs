@@ -86,7 +86,8 @@ impl Staquia {
         }
         if digits.len() > self.lmax {
             let (n, z) = digits.split_at(self.ln());
-            let position = Position::new(self.signature, n.iter().copied(), z.iter().copied());
+            let position = Position::new(self.signature, n.iter().copied(), z.iter().copied())
+                .measured_as(digits.len());
             return Err(PositionError::Overflow {
                 position: position.truncated(self.lmax + 1),
                 length: digits.len(),

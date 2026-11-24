@@ -1,4 +1,4 @@
-//! The port of the JavaScript `tests/specs/integration-tests/lexical-list.spec.ts` (104 tests). The tests keep
+//! The port of the JavaScript `tests/specs/integration-tests/lexical-list.spec.ts` (108 tests). The tests keep
 //! the names of the JavaScript methods.
 //!
 //! Rust differences: ids can't be `null` or `undefined` (the tests of invalid ids check the closest
@@ -1193,6 +1193,90 @@ fn lexical_list_sort_after_moves() {
             position(index)
         );
     }
+}
+
+/// Should not change the list nor the objects when the system has no room to sort.
+#[test]
+fn lexical_list_sort_without_room() {
+    // N has one digit from "a" to "c": sorting has room for "b!" and "c!" only
+    let mut list = LexicalList::new(Staquia::create('!', 'a', 'c', 1, 3, 0.0).unwrap());
+    list.set(vec![stored(1, "a!"), stored(2, "b!"), stored(3, "c!")])
+        .unwrap();
+    assert_lexical_error(list.sort_by(|a, b| b.id.cmp(&a.id)), "position");
+    assert_links(&list, &[1, 2, 3]);
+    assert_eq!(positions(&list), ["a!", "b!", "c!"]);
+}
+
+/// Should sort exactly as many items as the system has room for.
+#[test]
+fn lexical_list_sort_up_to_the_room() {
+    for (first, last, ln) in [('a', 'c', 1), ('a', 'c', 2), ('a', 'd', 2), ('a', 'b', 3)] {
+        let system = Staquia::create('!', first, last, ln, 3, 0.0).unwrap();
+        // The room: the positions stacked one by one from the start
+        let mut room = 1;
+        let mut position = system.start().unwrap();
+        while let Ok(next) = system.next(&position) {
+            position = next;
+            room += 1;
+        }
+        let create = |count: u32| {
+            let mut list = LexicalList::new(system);
+            for id in 1..=count {
+                list.push(value(id)).unwrap();
+            }
+            list
+        };
+        let mut fits = create(room);
+        fits.sort_by(|a, b| b.id.cmp(&a.id)).unwrap();
+        assert_eq!(
+            fits.first().map(|item| *item.id()),
+            Some(room),
+            "{room} items from {first} to {last} with ln {ln}."
+        );
+
+        // One more item fits with `unshift` (which stacks before the start) but not in a sort
+        let mut unshifted = create(room);
+        unshifted.unshift(value(room + 1)).unwrap();
+        let before = positions(&unshifted);
+        assert_lexical_error(unshifted.sort_by(|a, b| b.id.cmp(&a.id)), "position");
+        assert_eq!(
+            positions(&unshifted),
+            before,
+            "{} items from {first} to {last} with ln {ln}.",
+            room + 1
+        );
+    }
+}
+
+// Rebalance
+
+/// Should rebalance keeping the order and report only the changed positions.
+#[test]
+fn lexical_list_rebalance() {
+    let mut list = create(&[1, 2, 3]);
+    list.move_to(&3, Some(&1), Some(&2)).unwrap();
+    assert_links(&list, &[1, 3, 2]);
+    let affected = ids(&list.rebalance().unwrap());
+    // The first item keeps the start position so it must not be reported.
+    assert_eq!(affected, [3, 2]);
+    assert_links(&list, &[1, 3, 2]);
+    for (index, id) in [1, 3, 2].iter().enumerate() {
+        assert_eq!(
+            list.find(id).unwrap().position().to_string(),
+            position(index)
+        );
+    }
+}
+
+/// Should not change the list nor the objects when the system has no room to rebalance.
+#[test]
+fn lexical_list_rebalance_without_room() {
+    let mut list = LexicalList::new(Staquia::create('!', 'a', 'c', 1, 3, 0.0).unwrap());
+    list.set(vec![stored(1, "a!"), stored(2, "b!"), stored(3, "c!")])
+        .unwrap();
+    assert_lexical_error(list.rebalance(), "position");
+    assert_links(&list, &[1, 2, 3]);
+    assert_eq!(positions(&list), ["a!", "b!", "c!"]);
 }
 
 // Destroy

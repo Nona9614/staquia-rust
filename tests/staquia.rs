@@ -1,4 +1,4 @@
-//! The port of the JavaScript `tests/specs/integration-tests/staquia.spec.ts` (34 tests): the public API of
+//! The port of the JavaScript `tests/specs/integration-tests/staquia.spec.ts` (35 tests): the public API of
 //! `Staquia`. The tests keep the names of the JavaScript methods.
 //!
 //! The library contract is that positions sorted as plain strings keep the same order as the list, so every
@@ -575,4 +575,27 @@ fn staquia_sync_checks_max_length() {
     };
     assert!(!system.has_overflow(&position));
     assert!(system.is_threshold_reached(&position));
+}
+
+/// Should measure the length like the functions that create the positions.
+#[test]
+fn staquia_sync_checks_measure_like_creation() {
+    // lmax = 6 and lϰ = 6: "mmmmm!" is created as 5 digits, the zero that completes it doesn't count
+    let tight = Staquia::create('!', 'a', 'z', 5, 1, 0.0).unwrap();
+    let start = tight.start().expect("created without a threshold error");
+    assert_eq!(start.to_string(), "mmmmm!");
+    assert!(!tight.is_threshold_reached(&start));
+    assert!(!tight.has_overflow(&start));
+
+    // lϰ = 3: "ab" has 2 characters, below the threshold
+    let half = Staquia::create('!', 'a', 'z', 5, 1, 0.5).unwrap();
+    let short = half.forge("ab").expect("forged without a threshold error");
+    assert_eq!(short.to_string(), "ab!!!!");
+    assert!(!half.is_threshold_reached(&short));
+
+    // The start position (5 digits) reaches it, and the check agrees with the error
+    let Err(PositionError::ThresholdReached { position, .. }) = half.start() else {
+        panic!("The start position reaches the threshold.")
+    };
+    assert!(half.is_threshold_reached(&position));
 }

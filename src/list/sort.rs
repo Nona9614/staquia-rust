@@ -2,15 +2,17 @@
 
 use core::cmp::Ordering;
 
-use super::spacing::respace;
 use super::{Item, LexicalItem, LexicalList};
-use crate::{LexicalError, Position};
+use crate::LexicalError;
 
 impl<T: Item> LexicalList<T> {
     /// Sorts the items with this comparison (stable) and gives them new positions spaced from the start.
     ///
-    /// Unlike moving items one by one, sorting changes many positions: save every affected item. Every position
-    /// is created before anything changes, so a failure leaves the list as it was.
+    /// Unlike moving items one by one, sorting changes many positions: save every affected item.
+    ///
+    /// It is all or nothing: the room for every position is verified before anything changes (with one
+    /// addition, no copy of the positions is made), so when the system has no room for every item the
+    /// error is returned and the list is left as it was.
     ///
     /// Returns the affected items: the ones whose position changed, to save them.
     ///
@@ -59,14 +61,19 @@ impl<T: Item> LexicalList<T> {
             (Some(a), Some(b)) => compare(&a.value, &b.value),
             _ => Ordering::Equal,
         });
-        // Creates every position before changing anything
-        let mut positions: Vec<Option<Position>> = vec![None; ids.len()];
-        respace(&self.system, &mut positions)?;
+        // All or nothing: the room for every position is verified before changing anything, without
+        // creating them all at once (a list of millions of items would hold them twice)
+        let mut position = self.system.start()?;
+        self.system.stack_room(ids.len())?;
         let mut affected: Vec<T::Id> = Vec::new();
         for (k, id) in ids.iter().enumerate() {
+            if k > 0 {
+                // Can't fail: `stack_room` verified that every `next` fits
+                position = self.system.next(&position)?;
+            }
             let previous = k.checked_sub(1).map(|k| ids[k].clone());
             let next = ids.get(k + 1).cloned();
-            let (Some(item), Some(position)) = (self.items.get_mut(id), positions[k]) else {
+            let Some(item) = self.items.get_mut(id) else {
                 continue;
             };
             if item.position != position {

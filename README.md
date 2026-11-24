@@ -15,7 +15,7 @@ Staquia is a configurable, zero dependency, lexicographic **position** algorithm
 
 When an item is moved, only **its own** position changes, the surrounding items never need to be updated. This makes it ideal for lists and tables stored in a database, where reordering one row should mean writing one row.
 
-This crate is the Rust version of the [staquia](https://nona9614.github.io/staquia-js/) JavaScript library (0.5.0). For the same system and operations both create **the same positions**, so a Rust service can read and write the positions stored by a JavaScript app. The tests of the repository replay more than 20,000 operations recorded with the JavaScript library and assert the same strings.
+This crate is the Rust version of the [staquia](https://nona9614.github.io/staquia-js/) JavaScript library (0.5.1). For the same system and operations both create **the same positions**, so a Rust service can read and write the positions stored by a JavaScript app. The tests of the repository replay more than 20,000 operations recorded with the JavaScript library and assert the same strings.
 
 - [Install](#install)
 - [Quick start](#quick-start)
@@ -202,8 +202,7 @@ The logic and the positions are the same; the API follows Rust conventions:
 - `Staquia::from_digits(&[u16])` instead of `from(IDigits)`, the digits most significant first.
 - `move_to` instead of `move` (a keyword), `sort_by` with a comparison of your values, `iter()` instead of `toArray()`, `at(usize)`.
 - `delete` gives the value back. `set` and `set_untrusted` are two methods instead of the `untrusted` option.
-- `sort_by` and `rebalance` create every position before changing anything, so a failure leaves the list unchanged.
-- `rebalance()` is new: the JavaScript apps do the same with `sort((a, b) => a.position.less(b.position) ? -1 : 1)`.
+- `sort_by` and `rebalance` work like JavaScript's `sort` and `rebalance` (0.5.1): all or nothing, the room for every position is verified first, so a failure leaves the list unchanged.
 - Ids can't be `null`, so there is no invalid id error, and the list can't contain a cycle, so there is no map overflow error.
 - `InvalidCharacter.index` counts characters; JavaScript counts UTF-16 units. They are the same for every valid string, as systems only use characters up to `U+FFFF`.
 - An `Overflow` keeps the position that caused it, like JavaScript. When a string or digits given to `forge` or `from_digits` are longer than one digit past the limit, the position is cut there and the error's `length` has the full length.
@@ -214,7 +213,7 @@ The logic and the positions are the same; the API follows Rust conventions:
 cargo test
 ```
 
-The 209 tests of the JavaScript library are ported with the same names: the ones of the internal numbers and
+The 214 tests of the JavaScript library are ported with the same names: the ones of the internal numbers and
 algorithms (`number.test.ts`, `algorithms.test.ts`, `composer.test.ts`, `forger.test.ts`) are unit tests inside
 `src/`, `staquia.spec.ts` is `tests/staquia.rs` and `lexical-list.spec.ts` is `tests/list.rs`. The tests of the
 Rust-only API are in `tests/rust_*.rs`.

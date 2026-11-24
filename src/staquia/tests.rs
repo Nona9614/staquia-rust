@@ -172,3 +172,44 @@ fn from_number_with_lower_bound() {
     number.lower = -2;
     assert_sections(&system().compose(&number).unwrap(), "abcd", "ef");
 }
+
+/// Should agree with stacking the positions one by one: `stack_room(count)` fails exactly when the
+/// `count - 1` calls to `next` from `start` fail, with the same error.
+#[test]
+fn stack_room_agrees_with_next() {
+    for (first, last, ln) in [
+        ('a', 'a', 1),
+        ('a', 'c', 1),
+        ('a', 'c', 2),
+        ('a', 'd', 2),
+        ('a', 'z', 2),
+        ('a', 'b', 3),
+    ] {
+        let system = Staquia::create('!', first, last, ln, 3, 0.0).expect("valid system");
+        let mut room: usize = 0; // the positions that fit, stacked one by one
+        let mut position = system.start().expect("start");
+        let edge = loop {
+            room += 1;
+            match system.next(&position) {
+                Ok(next) => position = next,
+                Err(error) => break error,
+            }
+        };
+        for count in [
+            0,
+            1,
+            room.saturating_sub(1),
+            room,
+            room + 1,
+            room + 10,
+            usize::MAX,
+        ] {
+            let expected = if count <= room { Ok(()) } else { Err(edge) };
+            assert_eq!(
+                system.stack_room(count),
+                expected,
+                "{count} positions in a system from {first} to {last} with ln {ln} (room {room})"
+            );
+        }
+    }
+}

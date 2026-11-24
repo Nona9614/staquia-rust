@@ -344,7 +344,7 @@ impl Staquia {
         length: usize,
         position: impl FnOnce() -> Position,
     ) -> Result<Position, PositionError> {
-        let position = position();
+        let position = position().measured_as(length);
         if length > self.lmax {
             return Err(PositionError::Overflow {
                 position: position.truncated(self.lmax + 1),

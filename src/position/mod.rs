@@ -46,6 +46,10 @@ pub struct Position {
     digits: [u16; CAPACITY],
     /// The number of digits (`N` plus `Z`).
     length: u8,
+    /// The length measured when the position was created, the one the threshold and the maximum length
+    /// are compared with (the JavaScript `length`): it doesn't count the zeroes that complete a stacked
+    /// position or a short string (`ln` for `"mmmmm!"`, 2 for `"ab!!!!"`).
+    measured: u8,
     signature: Signature,
 }
 
@@ -66,8 +70,20 @@ impl Position {
         Self {
             digits,
             length: length as u8,
+            measured: length as u8,
             signature,
         }
+    }
+
+    /// Sets the length the checks compare with the limits of the system (see `measured`).
+    pub(crate) fn measured_as(mut self, length: usize) -> Self {
+        self.measured = length.min(u8::MAX as usize) as u8;
+        self
+    }
+
+    /// The length the checks compare with the limits of the system (see `measured`).
+    pub(crate) fn measured(&self) -> usize {
+        self.measured as usize
     }
 
     /// Keeps the first `length` digits at most.
@@ -141,8 +157,10 @@ impl Position {
     /// The length of the position string, in characters (`N` plus `Z`). It is never empty: it always has `ln + 1`
     /// characters or more.
     ///
-    /// The length is what the [threshold](crate::Staquia::threshold_length) and the
-    /// [max length](crate::Staquia::max_length) of a system are compared with.
+    /// It is the size of the stored string. The [threshold](crate::Staquia::threshold_length) and the
+    /// [max length](crate::Staquia::max_length) of a system are compared with the length measured when the
+    /// position was created instead, like in JavaScript: it doesn't count the zeroes that complete a
+    /// stacked position or a short string, so `"mmmmm!"` counts `5` and a forged `"ab"` counts `2`.
     ///
     /// ```
     /// use staquia::Staquia;
