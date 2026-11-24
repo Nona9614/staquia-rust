@@ -25,15 +25,38 @@ import type { IPosition, IPositionResult, LexicalError } from "../../../javascri
 
 const here = dirname(fileURLToPath(import.meta.url));
 
+/** A system and its characters (the zero followed by every digit), to write random strings and digits. */
+interface FixtureSystem {
+  create: () => Staquia;
+  characters: string;
+  ln: number;
+  lz: number;
+}
+
+/** A system of a range from `first` to `last`. */
+const range = (zero: string, first: string, last: string, ln: number, lz: number, factor: number): FixtureSystem => {
+  let characters = zero;
+  for (let code = first.charCodeAt(0); code <= last.charCodeAt(0); code++) characters += String.fromCharCode(code);
+  return { create: () => Staquia.create(zero, first, last, ln, lz, factor), characters, ln, lz };
+};
+
+/** A system of a set of characters. */
+const set = (characters: string, ln: number, lz: number, create: () => Staquia): FixtureSystem => ({ create, characters, ln, lz });
+
 /** The systems, the Rust test creates the same ones by index. */
-const SYSTEMS: [string, string, string, number, number, number][] = [
-  ["!", "a", "z", 5, 15, 0.15],
-  ["!", "a", "z", 4, 12, 0.15],
-  ["!", "°", "ұ", 5, 15, 0.15],
-  ["!", "a", "z", 2, 3, 0.15],
-  ["0", "1", "9", 3, 6, 0.3],
-  ["!", "a", "c", 3, 8, 0.1],
-  ["!", "a", "z", 1, 31, 0],
+const SYSTEMS: FixtureSystem[] = [
+  range("!", "a", "z", 5, 15, 0.15),
+  range("!", "a", "z", 4, 12, 0.15),
+  range("!", "°", "ұ", 5, 15, 0.15),
+  range("!", "a", "z", 2, 3, 0.15),
+  range("0", "1", "9", 3, 6, 0.3),
+  range("!", "a", "c", 3, 8, 0.1),
+  range("!", "a", "z", 1, 31, 0),
+  // The presets with sets, and a short custom set so its edges and threshold are reached
+  set("!#$%&()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_abcdefghijklmnopqrstuvwxyz{|}~", 5, 15, () => Staquia.ascii()),
+  set("-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz", 5, 15, () => Staquia.urlSafe()),
+  set("0123456789abcdefghijklmnopqrstuvwxyz", 5, 15, () => Staquia.base36()),
+  set("0bcdfghjklmnpqrstvwxyz", 3, 8, () => Staquia.fromCharacters("0bcdfghjklmnpqrstvwxyz", 3, 8, 0.1)),
 ];
 
 /** A seeded random generator (mulberry32), so the fixtures are reproducible. */
@@ -71,11 +94,14 @@ const usable = (result: IPositionResult): IPosition | undefined => {
 const positions: string[] = [];
 const lists: string[] = [];
 
-SYSTEMS.forEach(([zero, first, last, ln, lz, factor], s) => {
-  const system = Staquia.create(zero, first, last, ln, lz, factor);
+SYSTEMS.forEach(({ create, characters, ln, lz }, s) => {
+  const system = create();
   const lmax = ln + lz;
-  const base = last.charCodeAt(0) - first.charCodeAt(0) + 2;
-  const character = (digit: number) => (digit === 0 ? zero : String.fromCharCode(first.charCodeAt(0) + digit - 1));
+  const base = characters.length;
+  const zero = characters[0]!;
+  const first = characters[1]!;
+  const last = characters[base - 1]!;
+  const character = (digit: number) => characters[digit]!;
   const record = (operation: string, a: string, b: string, result: IPositionResult) => {
     positions.push([s, operation, a, b, encode(result)].join("\t"));
     const position = usable(result);
@@ -159,7 +185,7 @@ SYSTEMS.forEach(([zero, first, last, ln, lz, factor], s) => {
   }
 
   // Positions of another system can't be mixed
-  const other = Staquia.create(...SYSTEMS[(s + 1) % SYSTEMS.length]!);
+  const other = SYSTEMS[(s + 1) % SYSTEMS.length]!.create();
   const foreign = other.start();
   if (foreign.ok) {
     record("mismatch", pick(pool).toString(), String((s + 1) % SYSTEMS.length), system.core(pick(pool), foreign.value));
@@ -172,8 +198,8 @@ interface Task {
   position: string;
 }
 const kind = (error: LexicalError) => error.type;
-for (const s of [0, 3, 5]) {
-  const system = Staquia.create(...SYSTEMS[s]!);
+for (const s of [0, 3, 5, 8, 10]) {
+  const system = SYSTEMS[s]!.create();
   for (let scenario = 0; scenario < 6; scenario++) {
     const list = new LexicalList<number, Task>(system);
     let counter = 1;

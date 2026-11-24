@@ -1,5 +1,6 @@
-//! The presets and the systems from a set of characters (Rust and JavaScript create the same positions with them,
-//! see `tests/cross_language.rs`).
+//! The presets and the systems from a set of characters: the port of the "presets" group of the JavaScript
+//! `staquia.spec.ts` (same names), plus `sets_are_validated` (the JavaScript `fromCharacters` doesn't validate).
+//! Rust and JavaScript create the same positions with them, see `tests/cross_language.rs`.
 
 use staquia::{CreateError, Options, PositionError, Staquia};
 
@@ -27,7 +28,7 @@ impl Random {
 }
 
 #[test]
-fn presets_have_their_characters() {
+fn staquia_presets_start() {
     let summary: Vec<(u32, String)> = presets()
         .iter()
         .map(|(_, system)| {
@@ -56,7 +57,7 @@ fn presets_have_their_characters() {
 /// The strings of the positions must sort exactly as the positions, whatever the system: a database compares the
 /// strings, the library compares the digits.
 #[test]
-fn string_order_is_position_order_for_every_preset() {
+fn staquia_presets_string_order() {
     for (name, system) in presets() {
         let mut random = Random(0x9E37_79B9_7F4A_7C15);
         let mut positions = vec![system.start().unwrap()];
@@ -102,7 +103,7 @@ fn string_order_is_position_order_for_every_preset() {
 }
 
 #[test]
-fn a_set_with_consecutive_digits_is_the_range() {
+fn staquia_presets_consecutive_set() {
     let set = Staquia::from_characters(&"!abcdefghijklmnopqrstuvwxyz", 5, 15, 0.15).unwrap();
     assert_eq!(set, Staquia::alphabet());
     assert_eq!(set.options().characters, None);
@@ -113,7 +114,7 @@ fn a_set_with_consecutive_digits_is_the_range() {
 }
 
 #[test]
-fn systems_of_different_sets_are_different() {
+fn staquia_presets_mismatch() {
     let url = Staquia::url_safe();
     let base36 = Staquia::base36();
     let position = url.start().unwrap();
@@ -165,7 +166,7 @@ fn sets_are_validated() {
 }
 
 #[test]
-fn characters_outside_a_set_are_invalid() {
+fn staquia_presets_invalid_characters() {
     let system = Staquia::url_safe();
     // "." is URL safe but not a digit of the set, "/" is between "-" and "0"
     assert_eq!(

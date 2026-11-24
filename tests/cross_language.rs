@@ -3,7 +3,7 @@
 
 use staquia::{Item, LexicalError, LexicalList, Position, PositionError, Staquia};
 
-/// The systems of the fixtures, by index (the same as `SYSTEMS` in `generate.ts`).
+/// The range systems of the fixtures, by index (the same as `SYSTEMS` in `generate.ts`); 7 to 10 are sets, see `system`.
 const SYSTEMS: [(char, char, char, usize, usize, f64); 7] = [
     ('!', 'a', 'z', 5, 15, 0.15),
     ('!', 'a', 'z', 4, 12, 0.15),
@@ -15,9 +15,17 @@ const SYSTEMS: [(char, char, char, usize, usize, f64); 7] = [
 ];
 
 fn system(index: &str) -> Staquia {
-    let (zero, first, last, ln, lz, threshold) =
-        SYSTEMS[index.parse::<usize>().expect("system index")];
-    Staquia::create(zero, first, last, ln, lz, threshold).expect("valid system")
+    match index.parse::<usize>().expect("system index") {
+        // The presets with sets, and a short custom set
+        7 => Staquia::ascii(),
+        8 => Staquia::url_safe(),
+        9 => Staquia::base36(),
+        10 => Staquia::from_characters(&"0bcdfghjklmnpqrstvwxyz", 3, 8, 0.1).expect("valid system"),
+        index => {
+            let (zero, first, last, ln, lz, threshold) = SYSTEMS[index];
+            Staquia::create(zero, first, last, ln, lz, threshold).expect("valid system")
+        }
+    }
 }
 
 /// The position of a string, also when it reached the threshold (it is still valid).

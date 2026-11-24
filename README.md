@@ -216,9 +216,9 @@ The logic and the positions are the same; the API follows Rust conventions:
 cargo test
 ```
 
-The 214 tests of the JavaScript library are ported with the same names: the ones of the internal numbers and
+The 219 tests of the JavaScript library are ported with the same names: the ones of the internal numbers and
 algorithms (`number.test.ts`, `algorithms.test.ts`, `composer.test.ts`, `forger.test.ts`) are unit tests inside
-`src/`, `staquia.spec.ts` is `tests/staquia.rs` and `lexical-list.spec.ts` is `tests/list.rs`. The tests of the
+`src/`, `staquia.spec.ts` is `tests/staquia.rs` (its presets group is `tests/rust_presets.rs`) and `lexical-list.spec.ts` is `tests/list.rs`. The tests of the
 Rust-only API are in `tests/rust_*.rs`.
 
 `tests/cross_language.rs` replays the operations recorded in `tests/fixtures/*.tsv` with the JavaScript library. These fixtures (1.5 MB) are only in the repository, not in the published crate, whose other tests still run with `cargo test`. To record them again, from the `javascript/` folder of the staquia repository:
