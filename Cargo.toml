@@ -6,6 +6,7 @@ rust-version = "1.85"
 description = "Lexicographic positions: short strings that keep the order of a list, so moving an item writes one row."
 license = "MIT"
 homepage = "https://nona9614.github.io/staquia-js/"
+repository = "https://github.com/Nona9614/staquia-rust"
 readme = "README.md"
 keywords = ["position", "order", "lexicographic", "list", "database"]
 categories = ["algorithms", "data-structures", "database"]
