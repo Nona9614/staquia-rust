@@ -170,13 +170,13 @@ impl<T: Item> LexicalList<T> {
                 }
             }
             // Fills the missing positions, if there is no room spaces every position again
-            if !fill(&self.system, &mut positions)
-                && let Err(error) = respace(&self.system, &mut positions)
-            {
-                return Err(Rejected {
-                    error: error.into(),
-                    value: values,
-                });
+            if !fill(&self.system, &mut positions) {
+                if let Err(error) = respace(&self.system, &mut positions) {
+                    return Err(Rejected {
+                        error: error.into(),
+                        value: values,
+                    });
+                }
             }
         }
         // Everything is valid, replaces the content

@@ -2,7 +2,7 @@
 
 [![crates.io](https://img.shields.io/crates/v/staquia.svg)](https://crates.io/crates/staquia)
 [![docs.rs](https://img.shields.io/docsrs/staquia)](https://docs.rs/staquia)
-[![MSRV](https://img.shields.io/badge/rustc-1.88+-blue.svg)](#install)
+[![MSRV](https://img.shields.io/badge/rustc-1.85+-blue.svg)](#install)
 [![license](https://img.shields.io/crates/l/staquia.svg)](#license)
 
 Short lexicographic positions for ordered lists: moving an item writes one row.
@@ -34,7 +34,7 @@ This crate is the Rust version of the [staquia](https://nona9614.github.io/staqu
 cargo add staquia
 ```
 
-The crate has no dependencies and no `unsafe` code, and needs Rust 1.88 or later. The API documentation is on [docs.rs](https://docs.rs/staquia), and the guides of the [JavaScript site](https://nona9614.github.io/staquia-js/) (how positions work, using them in a database) apply to both languages.
+The crate has no dependencies and no `unsafe` code, and needs Rust 1.85 or later (the first version with the 2024 edition). The API documentation is on [docs.rs](https://docs.rs/staquia), and the guides of the [JavaScript site](https://nona9614.github.io/staquia-js/) (how positions work, using them in a database) apply to both languages.
 
 ## Quick start
 
