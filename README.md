@@ -129,7 +129,7 @@ assert_eq!(core.to_string(), "mmmmmn");
 # Ok::<(), staquia::Error>(())
 ```
 
-A `Position` is a `Copy` value that lives on the stack: its digits in a `[u16; MAX_LENGTH]` array and the signature of the system that created it (its characters and `ln`), with no reference to the system. `Display` writes its string, the value to store. `n()`, `z()` and `digits()` give its digits, and `Staquia::from_digits` creates a position back from them.
+A `Position` is a `Copy` value that lives on the stack: its digits in a fixed array (`MAX_LENGTH` plus one, for the position of an overflow error) and the signature of the system that created it (its characters and `ln`), with no reference to the system. `Display` writes its string, the value to store. `n()`, `z()` and `digits()` give its digits, and `Staquia::from_digits` creates a position back from them.
 
 ## Errors
 
@@ -205,6 +205,7 @@ The logic and the positions are the same; the API follows Rust conventions:
 - `sort_by` and `rebalance` work like JavaScript's `sort` and `rebalance` (0.5.1): all or nothing, the room for every position is verified first, so a failure leaves the list unchanged.
 - Ids can't be `null`, so there is no invalid id error, and the list can't contain a cycle, so there is no map overflow error.
 - `InvalidCharacter.index` counts characters; JavaScript counts UTF-16 units. They are the same for every valid string, as systems only use characters up to `U+FFFF`.
+- `Position::len()` is the length of the stored string (`"mmmmm!"` is 6); JavaScript's `position.length` is the length measured when the position was created, which doesn't count the zeroes that complete it (5). The checks (`has_overflow`, `is_threshold_reached` and the errors) use that measured length in both libraries.
 - An `Overflow` keeps the position that caused it, like JavaScript. When a string or digits given to `forge` or `from_digits` are longer than one digit past the limit, the position is cut there and the error's `length` has the full length.
 
 ## Running the tests
