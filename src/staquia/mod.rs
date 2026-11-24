@@ -3,6 +3,7 @@
 mod forger;
 mod lexicon;
 mod options;
+mod presets;
 mod verifier;
 
 pub use options::Options;
@@ -105,6 +106,7 @@ impl Staquia {
             zero,
             first,
             last,
+            characters: None,
             ln,
             lz,
             threshold,
@@ -126,6 +128,7 @@ impl Staquia {
     ///     zero: '!',
     ///     first: 'a',
     ///     last: 'z',
+    ///     characters: None,
     ///     ln: 5,
     ///     lz: 15,
     ///     threshold: 0.15,
@@ -142,20 +145,26 @@ impl Staquia {
             zero,
             first,
             last,
+            characters,
             ln,
             lz,
             threshold,
         } = options;
+        // A set: validated, and stored as a range when its digits are consecutive
+        let (zero, first, last, set) = match characters {
+            Some(set) => set_bounds(set)?,
+            None => (zero, first, last, None),
+        };
         for ch in [zero, first, last] {
             if ch as u32 > 0xFFFF {
                 return Err(CreateError::Character(ch));
             }
         }
-        if !(zero < first && first <= last) {
+        if set.is_none() && !(zero < first && first <= last) {
             return Err(CreateError::Order { zero, first, last });
         }
-        // Surrogates are not characters, they can't be digits
-        if (first as u32) < 0xE000 && (last as u32) >= 0xD800 {
+        // Surrogates are not characters, they can't be digits (a set of `char`s never has them)
+        if set.is_none() && (first as u32) < 0xE000 && (last as u32) >= 0xD800 {
             return Err(CreateError::Character(last));
         }
         if ln < 1 || lz < 1 || ln + lz > MAX_LENGTH {
@@ -166,17 +175,15 @@ impl Staquia {
         }
         let lmax = ln + lz;
         Ok(Self {
-            signature: Signature {
-                zero,
-                first,
-                last,
-                ln: ln as u8,
-            },
+            signature: Signature::new(zero, first, last, ln as u8, set),
             lz,
             lmax,
             lthreshold: ((1.0 - threshold) * lmax as f64).ceil() as usize,
             factor: threshold,
-            base: last as i32 - first as i32 + 2,
+            base: match set {
+                Some(set) => set.chars().count() as i32,
+                None => last as i32 - first as i32 + 2,
+            },
         })
     }
 
@@ -196,9 +203,10 @@ impl Staquia {
     /// ```
     pub fn options(&self) -> Options {
         Options {
-            zero: self.signature.zero,
-            first: self.signature.first,
-            last: self.signature.last,
+            zero: self.signature.zero(),
+            first: self.signature.first(),
+            characters: self.signature.set,
+            last: self.signature.last(),
             ln: self.ln(),
             lz: self.lz,
             threshold: self.factor,
@@ -219,7 +227,7 @@ impl Staquia {
     /// # Ok::<(), staquia::Error>(())
     /// ```
     pub fn zero(&self) -> char {
-        self.signature.zero
+        self.signature.zero()
     }
 
     /// The character of the first digit (`1`), the smallest character after the zero.
@@ -232,7 +240,7 @@ impl Staquia {
     /// # Ok::<(), staquia::Error>(())
     /// ```
     pub fn first(&self) -> char {
-        self.signature.first
+        self.signature.first()
     }
 
     /// The character of the last digit (`base - 1`), the largest character of the system.
@@ -245,7 +253,7 @@ impl Staquia {
     /// # Ok::<(), staquia::Error>(())
     /// ```
     pub fn last(&self) -> char {
-        self.signature.last
+        self.signature.last()
     }
 
     /// The base of the system: the zero plus the characters from `first` to `last`, `(last - first) + 2`.
@@ -372,6 +380,30 @@ impl Staquia {
             })
         }
     }
+}
+
+/// Validates a character set and returns its zero, first and last characters, with the set itself unless its digits
+/// are consecutive (then it is the same system as the range, and its positions are compatible with it).
+fn set_bounds(
+    set: &'static &'static str,
+) -> Result<(char, char, char, Option<&'static &'static str>), CreateError> {
+    let mut chars = set.chars();
+    let (Some(zero), Some(first)) = (chars.next(), chars.next()) else {
+        return Err(CreateError::FewCharacters(set.chars().count()));
+    };
+    let mut last = first;
+    let mut consecutive = true;
+    if zero >= first {
+        return Err(CreateError::Unsorted(1));
+    }
+    for (offset, ch) in chars.enumerate() {
+        if ch <= last {
+            return Err(CreateError::Unsorted(offset + 2));
+        }
+        consecutive &= ch as u32 == last as u32 + 1;
+        last = ch;
+    }
+    Ok((zero, first, last, (!consecutive).then_some(set)))
 }
 
 #[cfg(test)]

@@ -79,9 +79,7 @@ impl Staquia {
     /// [`PositionError::InvalidCharacter`] with the character it would have.
     pub fn from_digits(&self, digits: &[u16]) -> Result<Position, PositionError> {
         if let Some(index) = digits.iter().position(|d| u32::from(*d) >= self.base()) {
-            let character =
-                char::from_u32(self.signature.first as u32 + u32::from(digits[index]) - 1)
-                    .unwrap_or(char::REPLACEMENT_CHARACTER);
+            let character = self.signature.character(digits[index]);
             return Err(PositionError::InvalidCharacter { character, index });
         }
         if digits.len() > self.lmax {

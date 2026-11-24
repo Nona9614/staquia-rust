@@ -48,6 +48,11 @@ pub enum CreateError {
     },
     /// The threshold factor must be a number from `0` to `1`.
     Threshold(f64),
+    /// A character set needs the zero and at least one digit, holds how many characters it has.
+    FewCharacters(usize),
+    /// The characters of a set must be sorted by their code without repeating any, holds the index of the first
+    /// character that is not greater than the one before it.
+    Unsorted(usize),
 }
 
 impl fmt::Display for CreateError {
@@ -71,6 +76,14 @@ impl fmt::Display for CreateError {
             Self::Threshold(factor) => write!(
                 f,
                 "The threshold factor must be from 0 to 1 (got {factor})."
+            ),
+            Self::FewCharacters(count) => write!(
+                f,
+                "A character set needs the zero and at least one digit (got {count} characters)."
+            ),
+            Self::Unsorted(index) => write!(
+                f,
+                "The characters of a set must be sorted by their code without repeating any (the character at index {index} is not greater than the one before it)."
             ),
         }
     }

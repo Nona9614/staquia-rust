@@ -108,7 +108,7 @@ let longer = Staquia::create_with_options(Options { ln: 6, ..Options::default() 
 
 A `Staquia` is a small `Copy` value.
 
-**Why 32.** The JavaScript library has no fixed limit, but a Rust `Position` keeps its digits in a fixed array (32 digits, plus one so an overflow error can show the position that caused it), so it is a `Copy` value (84 bytes) that never allocates. 32 is more than lists need: the default system uses 20 (`ln = 5`, `lz = 15`), `N` stacks about 5.7 × 10¹⁴ items in each direction, and a longer `Z` only allows more moves into the same gap (121 with 20 digits, 242 with 32) before the list has to be rebalanced, which happens with any limit. Longer positions also cost space in the database and its index (up to 3 bytes per digit in UTF-8).
+**Why 32.** The JavaScript library has no fixed limit, but a Rust `Position` keeps its digits in a fixed array (32 digits, plus one so an overflow error can show the position that caused it), so it is a `Copy` value (88 bytes) that never allocates. 32 is more than lists need: the default system uses 20 (`ln = 5`, `lz = 15`), `N` stacks about 5.7 × 10¹⁴ items in each direction, and a longer `Z` only allows more moves into the same gap (121 with 20 digits, 242 with 32) before the list has to be rebalanced, which happens with any limit. Longer positions also cost space in the database and its index (up to 3 bytes per digit in UTF-8).
 
 ## Positions
 

@@ -251,7 +251,7 @@ fn sorting_positions_and_strings_gives_the_same_order() {
 
 #[test]
 fn positions_are_small_stack_values() {
-    // Digits, length and signature, no pointer
+    // Digits, lengths and signature (with a reference to a static character set), no heap
     assert!(size_of::<Position>() <= 2 * MAX_LENGTH + 24);
     let a = system().start().unwrap();
     let b = a; // Copy

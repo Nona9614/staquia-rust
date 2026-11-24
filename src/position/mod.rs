@@ -3,7 +3,7 @@
 mod ordering;
 mod signature;
 
-pub(crate) use signature::Signature;
+pub(crate) use signature::{Signature, set_digit};
 
 use core::fmt::{self, Write};
 
