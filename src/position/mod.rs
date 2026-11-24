@@ -87,23 +87,83 @@ impl Position {
     }
 
     /// The digits of the `Z` section, the most significant first. It always has at least one digit.
+    ///
+    /// `Z` is the part that grows when an item is moved between two others; a stacked position has a single zero
+    /// digit there.
+    ///
+    /// ```
+    /// use staquia::Staquia;
+    ///
+    /// let system = Staquia::create('!', 'a', 'z', 5, 15, 0.15)?;
+    /// let start = system.start()?; // "mmmmm!"
+    /// let next = system.next(&start)?; // "mmmmn!"
+    /// let core = system.core(&start, &next)?; // "mmmmmn"
+    ///
+    /// assert_eq!(start.z(), &[0]);
+    /// assert_eq!(core.z(), &[14]); // "n"
+    /// # Ok::<(), staquia::Error>(())
+    /// ```
     pub fn z(&self) -> &[u16] {
         &self.digits[self.signature.ln as usize..self.length as usize]
     }
 
-    /// Every digit, `N` followed by `Z`. [`Staquia::from_digits`](crate::Staquia::from_digits) creates the
-    /// position back from them.
+    /// Every digit, `N` followed by `Z`, the most significant first. The zero character is `0`, `first` is `1`
+    /// and `last` is `base - 1`.
+    ///
+    /// [`Staquia::from_digits`](crate::Staquia::from_digits) creates the position back from them, for example
+    /// to store a position as numbers.
+    ///
+    /// ```
+    /// use staquia::Staquia;
+    ///
+    /// let system = Staquia::create('!', 'a', 'z', 5, 15, 0.15)?;
+    /// let position = system.forge("abc")?;
+    /// assert_eq!(position.digits(), &[1, 2, 3, 0, 0, 0]);
+    ///
+    /// let again = system.from_digits(position.digits())?;
+    /// assert_eq!(again, position);
+    /// # Ok::<(), staquia::Error>(())
+    /// ```
     pub fn digits(&self) -> &[u16] {
         &self.digits[..self.length as usize]
     }
 
-    /// The length of the position string, in characters (`N` plus `Z`).
+    /// The length of the position string, in characters (`N` plus `Z`). It is never empty: it always has `ln + 1`
+    /// characters or more.
+    ///
+    /// The length is what the [threshold](crate::Staquia::threshold_length) and the
+    /// [max length](crate::Staquia::max_length) of a system are compared with.
+    ///
+    /// ```
+    /// use staquia::Staquia;
+    ///
+    /// let system = Staquia::create('!', 'a', 'z', 5, 15, 0.15)?;
+    /// assert_eq!(system.start()?.len(), 6); // "mmmmm!"
+    ///
+    /// // "a" and "b" are adjacent, the middle needs one more digit
+    /// let a = system.forge("mmmmma")?;
+    /// let b = system.forge("mmmmmb")?;
+    /// assert_eq!(system.core(&a, &b)?.to_string(), "mmmmmam");
+    /// assert_eq!(system.core(&a, &b)?.len(), 7);
+    /// # Ok::<(), staquia::Error>(())
+    /// ```
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.length as usize
     }
 
-    /// The characters of the position string.
+    /// The characters of the position string, without allocating a `String`.
+    ///
+    /// ```
+    /// use staquia::Staquia;
+    ///
+    /// let system = Staquia::create('!', 'a', 'z', 5, 15, 0.15)?;
+    /// let start = system.start()?;
+    ///
+    /// assert_eq!(start.chars().next(), Some('m'));
+    /// assert_eq!(start.chars().collect::<String>(), start.to_string());
+    /// # Ok::<(), staquia::Error>(())
+    /// ```
     pub fn chars(&self) -> impl Iterator<Item = char> + '_ {
         self.digits()
             .iter()

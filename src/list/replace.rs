@@ -11,7 +11,37 @@ impl<T: Item> LexicalList<T> {
     /// Replaces the content of the list with these values, already ordered by their stored positions (for
     /// example rows loaded from a database sorted by position). The positions are verified, not changed.
     ///
-    /// Returns the affected items, always none for this trusted input.
+    /// Use it when the positions are known to be valid and sorted (`ORDER BY position`), it is the fastest way to
+    /// load a list. Returns the affected items, always none for this trusted input.
+    ///
+    /// ```
+    /// # use staquia::{Item, LexicalList, Position, Staquia};
+    /// # #[derive(Debug)]
+    /// # struct Task { id: u32, done: bool, position: String }
+    /// # impl Item for Task {
+    /// #     type Id = u32;
+    /// #     fn id(&self) -> &u32 { &self.id }
+    /// #     fn position(&self) -> &str { &self.position }
+    /// #     fn set_position(&mut self, position: &Position) { self.position = position.to_string(); }
+    /// # }
+    /// # let task = |id| Task { id, done: false, position: String::new() };
+    /// # let stored = |id, position: &str| Task { id, done: false, position: position.to_string() };
+    /// use staquia::LexicalError;
+    ///
+    /// let mut list = LexicalList::new(Staquia::create('!', 'a', 'z', 5, 15, 0.15)?);
+    ///
+    /// // Rows loaded with `ORDER BY position`
+    /// list.set(vec![stored(1, "mmmmm!"), stored(2, "mmmmn!")])?;
+    /// assert_eq!(list.len(), 2);
+    ///
+    /// // Out of order: nothing changes, the rows come back
+    /// let rejected = list.set(vec![stored(3, "mmmmn!"), stored(4, "mmmmm!")]).unwrap_err();
+    /// assert_eq!(rejected.error, LexicalError::NotOrdered { index: 1, previous: 3, id: 4 });
+    /// assert_eq!(rejected.into_value().len(), 2);
+    /// assert!(list.contains(&1));
+    /// # Ok::<(), staquia::Error<u32>>(())
+    /// ```
+    ///
     ///
     /// # Errors
     ///
@@ -27,7 +57,37 @@ impl<T: Item> LexicalList<T> {
     /// and the values without a valid position are added at the end. When there is no room to repair them,
     /// every position is spaced again from the start.
     ///
-    /// Returns the affected items: the ones whose position changed, to save them.
+    /// Use it for rows whose positions may be missing, repeated or unsorted: rows created before the column
+    /// existed, imported data, or positions written by concurrent clients. Returns the affected items: the ones
+    /// whose position changed, to save them.
+    ///
+    /// ```
+    /// # use staquia::{Item, LexicalList, Position, Staquia};
+    /// # #[derive(Debug)]
+    /// # struct Task { id: u32, done: bool, position: String }
+    /// # impl Item for Task {
+    /// #     type Id = u32;
+    /// #     fn id(&self) -> &u32 { &self.id }
+    /// #     fn position(&self) -> &str { &self.position }
+    /// #     fn set_position(&mut self, position: &Position) { self.position = position.to_string(); }
+    /// # }
+    /// # let task = |id| Task { id, done: false, position: String::new() };
+    /// # let stored = |id, position: &str| Task { id, done: false, position: position.to_string() };
+    /// let mut list = LexicalList::new(Staquia::create('!', 'a', 'z', 5, 15, 0.15)?);
+    ///
+    /// let rows = vec![
+    ///     stored(1, "mmmmn!"),
+    ///     stored(2, "mmmmm!"),
+    ///     stored(3, ""),       // no position yet
+    ///     stored(4, "mmmmm!"), // the same position as 2
+    /// ];
+    /// let affected: Vec<u32> = list.set_untrusted(rows)?.iter().map(|item| item.value().id).collect();
+    /// assert_eq!(affected, [4, 3]); // save these two rows
+    ///
+    /// let order: Vec<String> = list.iter().map(|item| format!("{} {}", item.id(), item.position())).collect();
+    /// assert_eq!(order, ["2 mmmmm!", "4 mmmmmn", "1 mmmmn!", "3 mmmmo!"]);
+    /// # Ok::<(), staquia::Error<u32>>(())
+    /// ```
     ///
     /// # Errors
     ///

@@ -4,6 +4,18 @@ use super::Staquia;
 
 impl Staquia {
     /// The character of the middle digit, the one repeated by [`start`](Self::start).
+    ///
+    /// Starting a list in the middle of `N` leaves as much room to stack items before the first one as after
+    /// the last one.
+    ///
+    /// ```
+    /// use staquia::Staquia;
+    ///
+    /// let system = Staquia::create('!', 'a', 'z', 5, 15, 0.15)?;
+    /// assert_eq!(system.middle(), 'm');
+    /// assert_eq!(system.start()?.to_string(), "mmmmm!");
+    /// # Ok::<(), staquia::Error>(())
+    /// ```
     pub fn middle(&self) -> char {
         let middle = (self.signature.last as u32 + self.signature.first as u32 - 1).div_ceil(2);
         // `first..=last` has no surrogates, so the middle is a character

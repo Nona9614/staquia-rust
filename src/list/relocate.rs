@@ -4,9 +4,49 @@ use super::{Item, LexicalItem, LexicalList};
 use crate::LexicalError;
 
 impl<T: Item> LexicalList<T> {
-    /// Moves the item between `previous` and `next`, the ids of its new neighbors as they are seen once the
-    /// item left its current place. Give only `previous` to move it to the end, only `next` to move it to the
-    /// start. Only the moved item gets a new position.
+    /// Moves the item between `previous` and `next`, the ids of its new neighbors as they are seen once the item
+    /// left its current place, and returns it. Give only `previous` to move it to the end, only `next` to move it
+    /// to the start.
+    ///
+    /// Only the moved item gets a new position, so only its row needs to be saved:
+    ///
+    /// - between two items, the middle of their positions ([`Staquia::core`](crate::Staquia::core)), which can
+    ///   be one digit longer;
+    /// - at the end or the start, the next or previous position of that end, which never grows.
+    ///
+    /// Moving an item to the place it already has changes nothing.
+    ///
+    /// ```
+    /// # use staquia::{Item, LexicalList, Position, Staquia};
+    /// # #[derive(Debug)]
+    /// # struct Task { id: u32, done: bool, position: String }
+    /// # impl Item for Task {
+    /// #     type Id = u32;
+    /// #     fn id(&self) -> &u32 { &self.id }
+    /// #     fn position(&self) -> &str { &self.position }
+    /// #     fn set_position(&mut self, position: &Position) { self.position = position.to_string(); }
+    /// # }
+    /// # let task = |id| Task { id, done: false, position: String::new() };
+    /// # let stored = |id, position: &str| Task { id, done: false, position: position.to_string() };
+    /// let mut list = LexicalList::new(Staquia::create('!', 'a', 'z', 5, 15, 0.15)?);
+    /// list.push(task(1))?; // "mmmmm!"
+    /// list.push(task(2))?; // "mmmmn!"
+    /// list.push(task(3))?; // "mmmmo!"
+    ///
+    /// // Between 1 and 2
+    /// let moved = list.move_to(&3, Some(&1), Some(&2))?;
+    /// assert_eq!(moved.value().position, "mmmmmn");
+    ///
+    /// // To the end, after 2
+    /// list.move_to(&1, Some(&2), None)?;
+    /// // To the start, before 3
+    /// list.move_to(&2, None, Some(&3))?;
+    ///
+    /// let ids: Vec<u32> = list.iter().map(|item| item.value().id).collect();
+    /// assert_eq!(ids, [2, 3, 1]);
+    /// # Ok::<(), staquia::Error<u32>>(())
+    /// ```
+    ///
     ///
     /// # Errors
     ///

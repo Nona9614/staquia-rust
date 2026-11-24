@@ -4,9 +4,42 @@ use core::fmt;
 
 use super::PositionError;
 
-/// Why an operation of a [`LexicalList`](crate::LexicalList) failed. `K` is the type of the ids.
+/// Why an operation of a [`LexicalList`](crate::LexicalList) failed. `K` is the type of the ids, so the
+/// error tells which item caused it.
 ///
-/// When an operation fails, neither the list nor its items are changed.
+/// When an operation fails, neither the list nor its items are changed, so it is safe to fix the cause and
+/// try again. It converts into [`Error`](crate::Error) with `?`.
+///
+/// # Example
+///
+/// ```
+/// # use staquia::{Item, LexicalList, Position, Staquia};
+/// # #[derive(Debug)]
+/// # struct Task { id: u32, position: String }
+/// # impl Item for Task {
+/// #     type Id = u32;
+/// #     fn id(&self) -> &u32 { &self.id }
+/// #     fn position(&self) -> &str { &self.position }
+/// #     fn set_position(&mut self, position: &Position) { self.position = position.to_string(); }
+/// # }
+/// # let task = |id| Task { id, position: String::new() };
+/// use staquia::LexicalError;
+///
+/// let mut list = LexicalList::new(Staquia::create('!', 'a', 'z', 5, 15, 0.15)?);
+/// list.push(task(1))?;
+/// list.push(task(2))?;
+/// list.push(task(3))?;
+///
+/// // There is no task 9
+/// assert!(matches!(list.delete(&9), Err(LexicalError::NotFound(9))));
+///
+/// // 2 is not the first task, so it can't be the only neighbor of a move to the start
+/// assert!(matches!(
+///     list.move_to(&3, None, Some(&2)),
+///     Err(LexicalError::NotAdjacent { previous: None, next: Some(2) })
+/// ));
+/// # Ok::<(), staquia::Error<u32>>(())
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub enum LexicalError<K> {
     /// A position could not be created.

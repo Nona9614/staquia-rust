@@ -9,7 +9,36 @@ use crate::{LexicalError, Position};
 impl<T: Item> LexicalList<T> {
     /// Sorts the items with this comparison (stable) and gives them new positions spaced from the start.
     ///
+    /// Unlike moving items one by one, sorting changes many positions: save every affected item. Every position
+    /// is created before anything changes, so a failure leaves the list as it was.
+    ///
     /// Returns the affected items: the ones whose position changed, to save them.
+    ///
+    /// ```
+    /// # use staquia::{Item, LexicalList, Position, Staquia};
+    /// # #[derive(Debug)]
+    /// # struct Task { id: u32, done: bool, position: String }
+    /// # impl Item for Task {
+    /// #     type Id = u32;
+    /// #     fn id(&self) -> &u32 { &self.id }
+    /// #     fn position(&self) -> &str { &self.position }
+    /// #     fn set_position(&mut self, position: &Position) { self.position = position.to_string(); }
+    /// # }
+    /// # let task = |id| Task { id, done: false, position: String::new() };
+    /// # let stored = |id, position: &str| Task { id, done: false, position: position.to_string() };
+    /// let mut list = LexicalList::new(Staquia::create('!', 'a', 'z', 5, 15, 0.15)?);
+    /// list.push(task(1))?; // "mmmmm!"
+    /// list.push(task(2))?; // "mmmmn!"
+    /// list.push(task(3))?; // "mmmmo!"
+    ///
+    /// // Highest id first
+    /// let affected: Vec<u32> = list.sort_by(|a, b| b.id.cmp(&a.id))?.iter().map(|item| item.value().id).collect();
+    /// assert_eq!(affected, [3, 1]); // 2 kept "mmmmn!"
+    ///
+    /// let ids: Vec<u32> = list.iter().map(|item| item.value().id).collect();
+    /// assert_eq!(ids, [3, 2, 1]);
+    /// # Ok::<(), staquia::Error<u32>>(())
+    /// ```
     ///
     /// # Errors
     ///
@@ -60,6 +89,30 @@ impl<T: Item> LexicalList<T> {
     /// (or a position reached the threshold), then try again.
     ///
     /// Returns the affected items: the ones whose position changed, to save them.
+    ///
+    /// ```
+    /// # use staquia::{Item, LexicalList, Position, Staquia};
+    /// # #[derive(Debug)]
+    /// # struct Task { id: u32, done: bool, position: String }
+    /// # impl Item for Task {
+    /// #     type Id = u32;
+    /// #     fn id(&self) -> &u32 { &self.id }
+    /// #     fn position(&self) -> &str { &self.position }
+    /// #     fn set_position(&mut self, position: &Position) { self.position = position.to_string(); }
+    /// # }
+    /// # let task = |id| Task { id, done: false, position: String::new() };
+    /// # let stored = |id, position: &str| Task { id, done: false, position: position.to_string() };
+    /// let mut list = LexicalList::new(Staquia::create('!', 'a', 'z', 5, 15, 0.15)?);
+    /// list.push(task(1))?; // "mmmmm!"
+    /// list.push(task(2))?; // "mmmmn!"
+    /// list.push(task(3))?;
+    /// list.move_to(&3, Some(&1), Some(&2))?; // "mmmmmn", one digit longer than the others
+    ///
+    /// let affected: Vec<u32> = list.rebalance()?.iter().map(|item| item.value().id).collect();
+    /// assert_eq!(affected, [3, 2]);
+    /// assert_eq!(list.find(&3).unwrap().position().to_string(), "mmmmn!"); // short again, same order
+    /// # Ok::<(), staquia::Error<u32>>(())
+    /// ```
     ///
     /// # Errors
     ///

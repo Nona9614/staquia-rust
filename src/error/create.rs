@@ -5,6 +5,26 @@ use core::fmt;
 use crate::MAX_LENGTH;
 
 /// Why [`Staquia::create`](crate::Staquia::create) rejected a configuration.
+///
+/// The checks are cheap and run once, when the system is created, so every system that exists is valid.
+///
+/// # Example
+///
+/// ```
+/// use staquia::{CreateError, Staquia};
+///
+/// // The zero must be smaller than the digits
+/// assert!(matches!(Staquia::create('a', '!', 'z', 5, 15, 0.15), Err(CreateError::Order { .. })));
+///
+/// // Characters above U+FFFF compare differently in UTF-16 (JavaScript) and UTF-8
+/// assert_eq!(Staquia::create('!', 'a', '😀', 5, 15, 0.15), Err(CreateError::Character('😀')));
+///
+/// // `N` and `Z` need at least one digit, and at most 32 in total
+/// assert_eq!(Staquia::create('!', 'a', 'z', 0, 15, 0.15), Err(CreateError::Length { ln: 0, lz: 15 }));
+///
+/// // The threshold is a factor from 0 to 1
+/// assert_eq!(Staquia::create('!', 'a', 'z', 5, 15, 1.5), Err(CreateError::Threshold(1.5)));
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CreateError {
     /// The characters must be `zero < first <= last`.
