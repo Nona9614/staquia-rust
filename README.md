@@ -1,5 +1,16 @@
 # staquia
 
+[![crates.io](https://img.shields.io/crates/v/staquia.svg)](https://crates.io/crates/staquia)
+[![docs.rs](https://img.shields.io/docsrs/staquia)](https://docs.rs/staquia)
+[![MSRV](https://img.shields.io/badge/rustc-1.88+-blue.svg)](#install)
+[![license](https://img.shields.io/crates/l/staquia.svg)](#license)
+
+Short lexicographic positions for ordered lists: moving an item writes one row.
+
+- Zero dependencies, no `unsafe`, nothing panics.
+- Positions are `Copy` values that never allocate.
+- The same positions as the JavaScript library, checked with more than 20,000 recorded operations.
+
 Staquia is a configurable, zero dependency, lexicographic **position** algorithm. It solves the reinsertion and sorting problem of long lists: every item stores a short string position, and sorting those strings gives the order of the list.
 
 When an item is moved, only **its own** position changes, the surrounding items never need to be updated. This makes it ideal for lists and tables stored in a database, where reordering one row should mean writing one row.

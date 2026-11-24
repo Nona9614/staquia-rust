@@ -88,6 +88,11 @@ impl Staquia {
     /// assert_eq!(alphabet.start()?.to_string(), "mmmmm!");
     /// # Ok::<(), staquia::Error>(())
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// [`CreateError::Order`], [`CreateError::Character`], [`CreateError::Length`] or
+    /// [`CreateError::Threshold`] when the configuration breaks one of the rules above.
     pub fn create(
         zero: char,
         first: char,
@@ -107,6 +112,10 @@ impl Staquia {
     }
 
     /// Creates a number system from its [`Options`], see [`Staquia::create`].
+    ///
+    /// # Errors
+    ///
+    /// The same as [`Staquia::create`].
     pub fn create_with_options(options: Options) -> Result<Self, CreateError> {
         let Options {
             zero,

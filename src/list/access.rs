@@ -83,6 +83,11 @@ impl<T: Item> LexicalList<T> {
     }
 
     /// The position for a new item at the start of the list (the start position when it is empty).
+    ///
+    /// # Errors
+    ///
+    /// The errors of [`Staquia::previous`] (or [`Staquia::start`] when the list is empty), for example
+    /// [`PositionError::EdgeReached`] when the first item already has the first value of `N`.
     pub fn head(&self) -> Result<Position, PositionError> {
         match self.first() {
             Some(first) => self.system.previous(&first.position),
@@ -91,6 +96,11 @@ impl<T: Item> LexicalList<T> {
     }
 
     /// The position for a new item at the end of the list (the start position when it is empty).
+    ///
+    /// # Errors
+    ///
+    /// The errors of [`Staquia::next`] (or [`Staquia::start`] when the list is empty), for example
+    /// [`PositionError::EdgeReached`] when the last item already has the last value of `N`.
     pub fn tail(&self) -> Result<Position, PositionError> {
         match self.last() {
             Some(last) => self.system.next(&last.position),
