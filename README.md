@@ -22,7 +22,7 @@ This crate is the Rust version of the [staquia](https://nona9614.github.io/staqu
 - [Install](#install)
 - [Quick start](#quick-start)
 - [How positions work](#how-positions-work)
-- [Creating a system](#creating-a-system)
+- [Creating a system](#creating-a-system) (and [presets](#presets))
 - [Positions](#positions)
 - [Errors](#errors)
 - [Lexical list](#lexical-list)
@@ -57,7 +57,7 @@ impl Item for Task {
 }
 
 fn main() -> Result<(), staquia::Error<u32>> {
-    let system = Staquia::create('!', 'a', 'z', 5, 15, 0.15)?;
+    let system = Staquia::alphabet();
     let mut list = LexicalList::new(system);
 
     list.push(Task { id: 1, title: "Write", position: String::new() })?; // "mmmmm!"
@@ -107,6 +107,32 @@ let longer = Staquia::create_with_options(Options { ln: 6, ..Options::default() 
 - the threshold factor is not from `0` to `1`.
 
 A `Staquia` is a small `Copy` value.
+
+### Presets
+
+Ready to use systems, no parameters to choose. Change their lengths with the same `Options` constructors:
+`Staquia::create_with_options(Options { ln: 6, ..Options::url_safe() })`.
+
+| Preset | Characters | Base | Start | Pick it when |
+| --- | --- | --- | --- | --- |
+| `Staquia::ascii()` | `!` + printable ASCII from `#` to `~` without `'`, `\` and `` ` `` | 90 | `PPPPP!` | you want plain ASCII: the most compact per byte, nothing to escape in JSON, SQL or logs |
+| `Staquia::url_safe()` | `-`, `0`-`9`, `A`-`Z`, `_`, `a`-`z` | 64 | `VVVVV-` | positions go in URLs, file names or HTML ids |
+| `Staquia::base36()` | `0`-`9`, `a`-`z` | 36 | `iiiii0` | the column is case insensitive (MySQL's default) or keys must be alphanumeric |
+| `Staquia::alphabet()` | `!` + `a`-`z` | 27 | `mmmmm!` | you want to read them in logs and docs (every example here uses it) |
+| `Staquia::default()` | `!` + `°` to `ұ` | 1027 | `ʰʰʰʰʰ!` | the shortest in characters (PostgreSQL `varchar(n)` counts characters) |
+
+The characters of `url_safe` are the ones of URL safe base64, but sorted by their code instead of the base64 order: positions are sort keys, not encoded data, so they keep the order a database compares them in.
+
+Any other set of characters works too, not only a range: `Staquia::from_characters(&"...", ln, lz, threshold)` takes the zero followed by every digit, sorted by their code. It is a reference to a static string (written `&"..."`), so positions keep only a pointer to it.
+
+```rust
+use staquia::Staquia;
+
+// The digits without the vowels: "0" is the zero, base 22
+let system = Staquia::from_characters(&"0bcdfghjklmnpqrstvwxyz", 5, 15, 0.15)?;
+assert_eq!(system.start()?.to_string(), "nnnnn0");
+# Ok::<(), staquia::Error>(())
+```
 
 **Why 32.** The JavaScript library has no fixed limit, but a Rust `Position` keeps its digits in a fixed array (32 digits, plus one so an overflow error can show the position that caused it), so it is a `Copy` value (88 bytes) that never allocates. 32 is more than lists need: the default system uses 20 (`ln = 5`, `lz = 15`), `N` stacks about 5.7 × 10¹⁴ items in each direction, and a longer `Z` only allows more moves into the same gap (121 with 20 digits, 242 with 32) before the list has to be rebalanced, which happens with any limit. Longer positions also cost space in the database and its index (up to 3 bytes per digit in UTF-8).
 
