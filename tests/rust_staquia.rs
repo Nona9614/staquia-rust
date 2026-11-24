@@ -62,13 +62,80 @@ fn threshold_reached_keeps_the_valid_position() {
     );
     assert!(system.is_threshold_reached(&position));
     assert!(!system.has_overflow(&position));
+    let Err(PositionError::Overflow {
+        position,
+        length,
+        limit,
+    }) = system.forge("mmmmabcdefghijklm")
+    else {
+        panic!("not an overflow")
+    };
     assert_eq!(
-        system.forge("mmmmabcdefghijklm"),
-        Err(PositionError::Overflow {
-            length: 17,
-            limit: 16
-        })
+        (position.to_string().as_str(), length, limit),
+        ("mmmmabcdefghijklm", 17, 16)
     );
+    assert!(system.has_overflow(&position));
+}
+
+/// Takes the position of a result, also the valid one inside a threshold error.
+fn any(result: Result<Position, PositionError>) -> Position {
+    match result {
+        Ok(position) | Err(PositionError::ThresholdReached { position, .. }) => position,
+        Err(error) => panic!("{error}"),
+    }
+}
+
+#[test]
+fn an_overflow_of_core_has_the_complete_middle_position() {
+    // ln + lz = 6: "mmmmma" and "mmmmmb" are adjacent and their middle needs a seventh digit
+    let system = Staquia::create('!', 'a', 'z', 5, 1, 0.0).unwrap();
+    let a = any(system.forge("mmmmma"));
+    let b = any(system.forge("mmmmmb"));
+    let error = system.core(&a, &b).unwrap_err();
+    let PositionError::Overflow {
+        position,
+        length,
+        limit,
+    } = error
+    else {
+        panic!("{error}")
+    };
+    assert_eq!(
+        (position.to_string().as_str(), length, limit),
+        ("mmmmmam", 7, 6)
+    );
+    assert_eq!(error.position(), Some(&position));
+    assert!(error.is_overflow());
+    assert_eq!(
+        error.to_string(),
+        "The position \"mmmmmam\" caused an overflow as its length '7' is bigger than the allowed system length '6'."
+    );
+}
+
+#[test]
+fn an_overflow_of_a_long_input_is_cut_after_the_first_extra_digit() {
+    let system = Staquia::create('!', 'a', 'z', 5, 15, 0.15).unwrap();
+    let error = system.forge(&"a".repeat(40)).unwrap_err();
+    let PositionError::Overflow {
+        position, length, ..
+    } = error
+    else {
+        panic!("{error}")
+    };
+    assert_eq!((position.to_string(), length), ("a".repeat(21), 40));
+    assert!(
+        error
+            .to_string()
+            .starts_with(&format!("The position \"{}...\"", "a".repeat(21)))
+    );
+
+    let Err(PositionError::Overflow {
+        position, length, ..
+    }) = system.from_digits(&[1; 200])
+    else {
+        panic!("not an overflow")
+    };
+    assert_eq!((position.to_string(), length), ("a".repeat(21), 200));
 }
 
 #[test]

@@ -60,8 +60,16 @@ pub enum PositionError {
         index: usize,
     },
     /// The position would be longer than the maximum length of the system (`ln + lz`).
+    ///
+    /// It keeps the position that caused it, to log or inspect what happened: for
+    /// [`core`](crate::Staquia::core) it is the complete middle position (one digit too long). For a
+    /// string or digits longer than that ([`forge`](crate::Staquia::forge),
+    /// [`from_digits`](crate::Staquia::from_digits)) it is cut after the first digit beyond the limit,
+    /// and `length` tells the full length.
     Overflow {
-        /// The length of the position.
+        /// The position that caused the overflow, up to the first digit beyond the limit.
+        position: Position,
+        /// The full length of the position.
         length: usize,
         /// The maximum length of the system.
         limit: usize,
@@ -163,9 +171,9 @@ impl PositionError {
     }
 
     /// The position of the error, when it has one: the reference position of
-    /// [`EdgeReached`](Self::EdgeReached), the created (and valid) position of
-    /// [`ThresholdReached`](Self::ThresholdReached), or the foreign position of
-    /// [`SystemMismatch`](Self::SystemMismatch).
+    /// [`EdgeReached`](Self::EdgeReached), the position that caused an [`Overflow`](Self::Overflow) (to log
+    /// it), the created (and valid) position of [`ThresholdReached`](Self::ThresholdReached), or the foreign
+    /// position of [`SystemMismatch`](Self::SystemMismatch).
     ///
     /// ```
     /// use staquia::Staquia;
@@ -187,9 +195,10 @@ impl PositionError {
     pub fn position(&self) -> Option<&Position> {
         match self {
             Self::EdgeReached { position, .. }
+            | Self::Overflow { position, .. }
             | Self::ThresholdReached { position, .. }
             | Self::SystemMismatch { position } => Some(position),
-            Self::InvalidCharacter { .. } | Self::Overflow { .. } => None,
+            Self::InvalidCharacter { .. } => None,
         }
     }
 }
@@ -201,10 +210,20 @@ impl fmt::Display for PositionError {
                 f,
                 "The character '{character}' at index {index} is not a digit of the system (the zero or a character from first to last)."
             ),
-            Self::Overflow { length, limit } => write!(
-                f,
-                "The position caused an overflow as its length '{length}' is bigger than the allowed system length '{limit}'."
-            ),
+            Self::Overflow {
+                position,
+                length,
+                limit,
+            } => {
+                write!(f, "The position \"{position}")?;
+                if *length > position.len() {
+                    f.write_str("...")?;
+                }
+                write!(
+                    f,
+                    "\" caused an overflow as its length '{length}' is bigger than the allowed system length '{limit}'."
+                )
+            }
             Self::EdgeReached {
                 position,
                 direction,

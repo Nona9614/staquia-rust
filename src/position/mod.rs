@@ -9,6 +9,10 @@ use core::fmt::{self, Write};
 
 use crate::MAX_LENGTH;
 
+/// The digits a position can hold: [`MAX_LENGTH`] plus one, the digit that overflows, so an
+/// [`Overflow`](crate::PositionError::Overflow) error can show the position that caused it.
+pub(crate) const CAPACITY: usize = MAX_LENGTH + 1;
+
 /// A position: a short string that keeps the order of a list.
 ///
 /// Sort your items by their position string (or by the `Position` itself, it implements [`Ord`])
@@ -39,7 +43,7 @@ use crate::MAX_LENGTH;
 #[derive(Clone, Copy)]
 pub struct Position {
     /// The digits: `N` (most significant first) followed by `Z`.
-    digits: [u16; MAX_LENGTH],
+    digits: [u16; CAPACITY],
     /// The number of digits (`N` plus `Z`).
     length: u8,
     signature: Signature,
@@ -47,16 +51,16 @@ pub struct Position {
 
 impl Position {
     /// Creates a position from its digits, `n` is `N` and `z` is `Z`, both most significant first.
-    /// The caller verified that both fit.
+    /// Digits beyond [`CAPACITY`] are dropped: only an overflowing position can have them.
     pub(crate) fn new(
         signature: Signature,
         n: impl Iterator<Item = u16>,
         z: impl Iterator<Item = u16>,
     ) -> Self {
-        let mut digits = [0u16; MAX_LENGTH];
+        let mut digits = [0u16; CAPACITY];
         let mut length = 0usize;
-        for digit in n.chain(z) {
-            digits[length] = digit;
+        for (slot, digit) in digits.iter_mut().zip(n.chain(z)) {
+            *slot = digit;
             length += 1;
         }
         Self {
@@ -64,6 +68,12 @@ impl Position {
             length: length as u8,
             signature,
         }
+    }
+
+    /// Keeps the first `length` digits at most.
+    pub(crate) fn truncated(mut self, length: usize) -> Self {
+        self.length = self.length.min(length as u8);
+        self
     }
 
     pub(crate) fn signature(&self) -> &Signature {

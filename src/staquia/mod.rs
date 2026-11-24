@@ -310,7 +310,7 @@ impl Staquia {
     /// assert_eq!(system.max_length(), 20);
     ///
     /// let too_long = "a".repeat(21);
-    /// assert!(matches!(system.forge(&too_long), Err(PositionError::Overflow { length: 21, limit: 20 })));
+    /// assert!(matches!(system.forge(&too_long), Err(PositionError::Overflow { length: 21, limit: 20, .. })));
     /// # Ok::<(), staquia::Error>(())
     /// ```
     pub fn max_length(&self) -> usize {
@@ -344,13 +344,14 @@ impl Staquia {
         length: usize,
         position: impl FnOnce() -> Position,
     ) -> Result<Position, PositionError> {
+        let position = position();
         if length > self.lmax {
             return Err(PositionError::Overflow {
+                position: position.truncated(self.lmax + 1),
                 length,
                 limit: self.lmax,
             });
         }
-        let position = position();
         if length >= self.lthreshold {
             return Err(PositionError::ThresholdReached {
                 position,

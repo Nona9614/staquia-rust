@@ -145,18 +145,20 @@ fn from_dangerous_number() {
     assert_sections(&position, "ozvx", "!klwqrbvdj");
 }
 
-/// Should mark the number as an overflow. The position is too long for a `Position`, so the error has
-/// its length instead.
+/// Should mark the number as an overflow, with the position that caused it.
 #[test]
 fn from_overflowed_number() {
     let error = system().compose(&alpha("ozvx!klwqrbvdjeyh")).unwrap_err();
-    assert_eq!(
-        error,
-        PositionError::Overflow {
-            length: 17,
-            limit: 16
-        }
-    );
+    let PositionError::Overflow {
+        position,
+        length,
+        limit,
+    } = error
+    else {
+        panic!("{error}")
+    };
+    assert_eq!((length, limit), (17, 16));
+    assert_sections(&position, "ozvx", "!klwqrbvdjeyh");
 }
 
 /// Should parse a number with lower bound.

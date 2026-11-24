@@ -518,8 +518,8 @@ fn staquia_systems_mismatch() {
 
 // Sync checks
 
-/// Should agree with the errors returned by forge at every length boundary. A position longer than the
-/// maximum can't exist in Rust, so the overflow length is checked through the error.
+/// Should agree with the errors returned by forge at every length boundary. The overflowing position is
+/// taken from the error.
 #[test]
 fn staquia_sync_checks_agree_with_errors() {
     let system = system();
@@ -546,14 +546,19 @@ fn staquia_sync_checks_agree_with_errors() {
                     "isThresholdReached with the length {length}."
                 );
             }
-            Err(error) => {
-                assert_eq!(
-                    error,
-                    PositionError::Overflow { length, limit: 16 },
-                    "The length {length}."
+            Err(PositionError::Overflow {
+                position,
+                length: overflow,
+                limit,
+            }) => {
+                assert_eq!((overflow, limit), (length, 16), "The length {length}.");
+                assert_eq!(position.to_string(), string);
+                assert!(
+                    system.has_overflow(&position),
+                    "hasOverflow with the length {length}."
                 );
-                assert!(length > 16);
             }
+            Err(error) => panic!("{error}"),
         }
     }
 }

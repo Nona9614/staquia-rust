@@ -106,7 +106,7 @@ let longer = Staquia::create_with_options(Options { ln: 6, ..Options::default() 
 
 A `Staquia` is a small `Copy` value.
 
-**Why 32.** The JavaScript library has no fixed limit, but a Rust `Position` keeps its digits in a fixed `[u16; 32]` array, so it is a `Copy` value (84 bytes) that never allocates. 32 is more than lists need: the default system uses 20 (`ln = 5`, `lz = 15`), `N` stacks about 5.7 × 10¹⁴ items in each direction, and a longer `Z` only allows more moves into the same gap (121 with 20 digits, 242 with 32) before the list has to be rebalanced, which happens with any limit. Longer positions also cost space in the database and its index (up to 3 bytes per digit in UTF-8).
+**Why 32.** The JavaScript library has no fixed limit, but a Rust `Position` keeps its digits in a fixed array (32 digits, plus one so an overflow error can show the position that caused it), so it is a `Copy` value (84 bytes) that never allocates. 32 is more than lists need: the default system uses 20 (`ln = 5`, `lz = 15`), `N` stacks about 5.7 × 10¹⁴ items in each direction, and a longer `Z` only allows more moves into the same gap (121 with 20 digits, 242 with 32) before the list has to be rebalanced, which happens with any limit. Longer positions also cost space in the database and its index (up to 3 bytes per digit in UTF-8).
 
 ## Positions
 
@@ -138,7 +138,7 @@ Nothing panics: every operation that can fail returns a `Result` with an error e
 | Error | When |
 | --- | --- |
 | `PositionError::InvalidCharacter` | `forge` found a character that is not a digit of the system |
-| `PositionError::Overflow` | the position would be longer than `ln + lz` |
+| `PositionError::Overflow` | the position would be longer than `ln + lz`: the error has that position, to log it |
 | `PositionError::EdgeReached` | `next` of the last value of `N`, or `previous` of the first one |
 | `PositionError::ThresholdReached` | the position reached the threshold: it is still valid (the error has it) but the list should be rebalanced |
 | `PositionError::SystemMismatch` | the position was created by a system with another configuration |
@@ -206,7 +206,7 @@ The logic and the positions are the same; the API follows Rust conventions:
 - `rebalance()` is new: the JavaScript apps do the same with `sort((a, b) => a.position.less(b.position) ? -1 : 1)`.
 - Ids can't be `null`, so there is no invalid id error, and the list can't contain a cycle, so there is no map overflow error.
 - `InvalidCharacter.index` counts characters; JavaScript counts UTF-16 units. They are the same for every valid string, as systems only use characters up to `U+FFFF`.
-- The positions with an `Overflow` error are too long to be stored in a `Position`, so the error has their length instead.
+- An `Overflow` keeps the position that caused it, like JavaScript. When a string or digits given to `forge` or `from_digits` are longer than one digit past the limit, the position is cut there and the error's `length` has the full length.
 
 ## Running the tests
 

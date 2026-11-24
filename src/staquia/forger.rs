@@ -78,17 +78,20 @@ impl Staquia {
     /// reached the threshold. A digit bigger than the last digit of the system is reported as an
     /// [`PositionError::InvalidCharacter`] with the character it would have.
     pub fn from_digits(&self, digits: &[u16]) -> Result<Position, PositionError> {
-        if digits.len() > self.lmax {
-            return Err(PositionError::Overflow {
-                length: digits.len(),
-                limit: self.lmax,
-            });
-        }
         if let Some(index) = digits.iter().position(|d| u32::from(*d) >= self.base()) {
             let character =
                 char::from_u32(self.signature.first as u32 + u32::from(digits[index]) - 1)
                     .unwrap_or(char::REPLACEMENT_CHARACTER);
             return Err(PositionError::InvalidCharacter { character, index });
+        }
+        if digits.len() > self.lmax {
+            let (n, z) = digits.split_at(self.ln());
+            let position = Position::new(self.signature, n.iter().copied(), z.iter().copied());
+            return Err(PositionError::Overflow {
+                position: position.truncated(self.lmax + 1),
+                length: digits.len(),
+                limit: self.lmax,
+            });
         }
         self.compose(&Digits::from_slice(digits))
     }
