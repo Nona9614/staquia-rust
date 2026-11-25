@@ -11,6 +11,6 @@ readme = "README.md"
 keywords = ["position", "order", "lexicographic", "list", "database"]
 categories = ["algorithms", "data-structures", "database"]
 # The cross-language fixtures (1.5 MB) stay in the repository: `cargo test` there replays them.
-exclude = [".vscode/", "tests/fixtures/", "tests/cross_language.rs"]
+exclude = [".vscode/", ".github/", "tests/fixtures/", "tests/cross_language.rs"]
 
 [dependencies]

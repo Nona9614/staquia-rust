@@ -1,6 +1,7 @@
 # staquia
 
 [![crates.io](https://img.shields.io/crates/v/staquia.svg)](https://crates.io/crates/staquia)
+[![CI](https://github.com/Nona9614/staquia-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/Nona9614/staquia-rust/actions/workflows/ci.yml)
 [![docs.rs](https://img.shields.io/docsrs/staquia)](https://docs.rs/staquia)
 [![MSRV](https://img.shields.io/badge/rustc-1.85+-blue.svg)](#install)
 [![license](https://img.shields.io/crates/l/staquia.svg)](#license)
