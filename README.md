@@ -16,9 +16,9 @@ Staquia is a configurable, zero dependency, lexicographic **position** algorithm
 
 When an item is moved, only **its own** position changes, the surrounding items never need to be updated. This makes it ideal for lists and tables stored in a database, where reordering one row should mean writing one row.
 
-To have a full detailed explanation you can go to the [documentation site](https://nona9614.github.io/staquia-js/): choose **Rust** in the language selector at the top to see the examples in Rust.
+To have a full detailed explanation you can go to the [documentation site](https://nona9614.github.io/staquia-js/#view=get-started&lang=rust), which opens with every example in Rust.
 
-This crate is the Rust version of the [staquia](https://nona9614.github.io/staquia-js/) JavaScript library (0.5.1). For the same system and operations both create **the same positions**, so a Rust service can read and write the positions stored by a JavaScript app. The tests of the repository replay more than 20,000 operations recorded with the JavaScript library and assert the same strings.
+This crate is the Rust version of the [staquia](https://nona9614.github.io/staquia-js/#view=get-started&lang=javascript) JavaScript library (0.5.1). For the same system and operations both create **the same positions**, so a Rust service can read and write the positions stored by a JavaScript app. The tests of the repository replay more than 20,000 operations recorded with the JavaScript library and assert the same strings.
 
 - [Install](#install)
 - [Quick start](#quick-start)
@@ -37,7 +37,7 @@ This crate is the Rust version of the [staquia](https://nona9614.github.io/staqu
 cargo add staquia
 ```
 
-The crate has no dependencies and no `unsafe` code, and needs Rust 1.85 or later (the first version with the 2024 edition). The API documentation is on [docs.rs](https://docs.rs/staquia), and the guides (how positions work, using them in a database, error handling) are on the [documentation site](https://nona9614.github.io/staquia-js/), with Rust examples.
+The crate has no dependencies and no `unsafe` code, and needs Rust 1.85 or later (the first version with the 2024 edition). The API documentation is on [docs.rs](https://docs.rs/staquia), and the guides (how positions work, using them in a database, error handling) are on the [documentation site](https://nona9614.github.io/staquia-js/#view=get-started&lang=rust), with Rust examples.
 
 ## Quick start
 

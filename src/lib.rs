@@ -2,12 +2,12 @@
 //!
 //! Sort the items by their position string and you get the order back; moving an item only changes its own
 //! position, so only one row is written to the database per change. It is the Rust version of the
-//! [staquia](https://nona9614.github.io/staquia-js/) JavaScript library: for the same system and operations,
+//! [staquia](https://nona9614.github.io/staquia-js/#view=get-started&lang=javascript) JavaScript library: for the same system and operations,
 //! both create the same positions.
 //!
 //! The guides (how positions work, storing them in a database, error handling) are on the
-//! [documentation site](https://nona9614.github.io/staquia-js/): choose **Rust** in its language selector to
-//! see the examples in Rust.
+//! [documentation site](https://nona9614.github.io/staquia-js/#view=get-started&lang=rust), which opens with every example in
+//! Rust.
 //!
 //! - [`Staquia`] is a number system that creates [`Position`]s.
 //! - [`LexicalList`] keeps the order of your values and their positions in sync.
